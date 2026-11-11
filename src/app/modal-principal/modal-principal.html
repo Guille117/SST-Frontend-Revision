@@ -1,0 +1,44 @@
+<dialog
+  #dialogElement
+  [class.modal-visor-documentos]="modalClass() === 'modal-visor-documentos'"
+  [class.modal-ancho]="modalClass() === 'modal-ancho'"
+  (close)="handleNativeClose()"
+>
+  <div class="modal-wrapper">
+    <div class="modal-popup-host"></div>
+    
+    <header class="modal-header">
+      <div>
+        <h2>{{ title() }}</h2>
+      </div>
+    </header>
+
+    <section class="modal-body">
+      <!-- Contenedor donde se renderiza el componente dinámico -->
+      <div #componentContainer></div>
+      
+      <!-- Contenido estático (ng-content) como fallback -->
+      <ng-content></ng-content>
+    </section>
+
+    @if (componentInstance?.modalActions?.length) {
+      <footer class="modal-footer">
+        @for (action of componentInstance?.modalActions ?? []; track action.id) {
+          <button
+            type="button"
+            class="btn"
+            [class]="action.className"
+            [disabled]="action.disabled?.() ?? false"
+            (click)="action.onClick()"
+          >
+            @if (action.icon) {
+              <i [class]="action.icon"></i>
+            }
+            {{ action.label }}
+          </button>
+        }
+      </footer>
+    }
+
+  </div>
+</dialog>

@@ -1,0 +1,54 @@
+<!-- Indicaciones médicas: rail de secciones, registro de la sección activa y su listado -->
+<div
+  class="indicaciones"
+  [class.indicaciones--ficha-abierta]="pacienteAbierto"
+  [class.indicaciones--paneles-amplios]="
+    seccionActiva === 'medicamentos' || seccionActiva === 'cuidados'
+  "
+>
+  <!-- Rail de secciones: medicamentos, exámenes y atenciones están desarrollados -->
+  <section class="panel panel-secciones">
+    <h3 class="panel-titulo">Indicaciones</h3>
+
+    @for (seccion of secciones; track seccion.id) {
+      <button
+        type="button"
+        class="tarjeta"
+        [class.tarjeta--activa]="seccionActiva === seccion.id"
+        [attr.aria-pressed]="seccionActiva === seccion.id"
+        [disabled]="!seccion.desarrollada"
+        (click)="seleccionarSeccion(seccion.id)"
+      >
+        <span class="tarjeta_icono"><i class="bi {{ seccion.icono }}" aria-hidden="true"></i></span>
+        <!-- El rail muestra solo el título de la sección: el icono queda alineado con él -->
+        <span class="tarjeta_texto">
+          <span class="tarjeta_titulo">{{ seccion.titulo }}</span>
+        </span>
+      </button>
+    }
+  </section>
+
+  <!-- Contenido de la sección activa: cada tarjeta del rail muestra su registro y su listado -->
+  @switch (seccionActiva) {
+    @case ('examenes') {
+      <app-indicacion-examenes />
+    }
+
+    @case ('cuidados') {
+      <app-indicacion-cuidados />
+    }
+
+    @default {
+      <app-indicacion-medicamentos />
+    }
+  }
+
+  <!-- Datos del paciente: bloque compartido con las demás pantallas del módulo, pegado al borde
+       derecho de la pantalla. Se abre y se cierra con su pestaña lateral, igual que en evaluación
+       clínica. -->
+  <app-datos-paciente
+    [plegable]="true"
+    [abierto]="pacienteAbierto"
+    (abiertoCambia)="cambiarFichaPaciente($event)"
+  ></app-datos-paciente>
+</div>

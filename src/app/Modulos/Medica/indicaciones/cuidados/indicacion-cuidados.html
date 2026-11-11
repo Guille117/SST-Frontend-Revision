@@ -1,0 +1,423 @@
+<!-- Atenciones: registro del cuidado o del monitoreo y listado con el filtro por estado -->
+<section
+  class="panel panel-seccion panel-seccion--scroll"
+  aria-labelledby="tituloAtenciones"
+>
+  <div class="indicacion-cabecera">
+    <h3 class="panel-titulo indicacion-titulo" id="tituloAtenciones">Atenciones</h3>
+
+    <div class="indicacion-cabecera-switch" role="group" aria-label="Tipo de atención">
+      <app-tab-switch
+        op1="Cuidados"
+        op2="Monitoreo"
+        tabindex="0"
+        [mostrarActivos]="tipoAtencion === 'cuidado'"
+        (opcionCambiada)="cambiarTipoAtencion($event)"
+        (keydown.arrowleft)="cambiarTipoAtencion(true)"
+        (keydown.arrowright)="cambiarTipoAtencion(false)"
+      ></app-tab-switch>
+    </div>
+  </div>
+
+  @if (!soloLectura) {
+  <form class="indicacion-form" (ngSubmit)="agregarCuidado()">
+    <!-- Nombre del cuidado o tipo de monitoreo, y su frecuencia -->
+    <div class="indicacion-fila">
+      <div class="indicacion-campo indicacion-campo--ancho">
+        @if (esMonitoreo) {
+          <label class="indicacion-etiqueta" for="tipoMonitoreo">
+            Tipo de monitoreo<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+          </label>
+          <select
+            class="indicacion-input"
+            id="tipoMonitoreo"
+            name="tipoMonitoreo"
+            aria-required="true"
+            [(ngModel)]="nombreCuidado"
+          >
+            <option value="">Seleccionar...</option>
+            @for (tipo of tiposMonitoreo; track tipo) {
+              <option [value]="tipo">{{ tipo }}</option>
+            }
+          </select>
+        } @else {
+          <label class="indicacion-etiqueta" for="nombreCuidado">
+            Nombre de cuidado<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+          </label>
+          <input
+            class="indicacion-input"
+            id="nombreCuidado"
+            name="nombreCuidado"
+            type="text"
+            placeholder="Ej. Cambio de posición"
+            maxlength="200"
+            aria-required="true"
+            [(ngModel)]="nombreCuidado"
+          />
+        }
+      </div>
+
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="frecuenciaCuidado">
+          Frecuencia (horas)
+        </label>
+        <input
+          class="indicacion-input"
+          id="frecuenciaCuidado"
+          name="frecuenciaCuidado"
+          type="number"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          placeholder="Ej. 8"
+          [(ngModel)]="frecuenciaCuidado"
+        />
+      </div>
+    </div>
+
+    <!-- Duración, tipo de duración y fecha de inicio: la vigencia del cuidado en una sola fila -->
+    <div class="indicacion-fila indicacion-fila--vigencia">
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="duracionCuidado">
+          Duración
+          @if (duracionTipoCuidado === 'dias') {
+            <span class="indicacion-obligatorio" aria-hidden="true">*</span>
+          }
+        </label>
+        <input
+          class="indicacion-input"
+          id="duracionCuidado"
+          name="duracionCantidadCuidado"
+          type="number"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          placeholder="Ej. 7"
+          [attr.aria-required]="duracionTipoCuidado === 'dias'"
+          [(ngModel)]="duracionCantidadCuidado"
+        />
+      </div>
+
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="duracionTipoCuidado">
+          Tipo de duración
+        </label>
+        <select
+          class="indicacion-input"
+          id="duracionTipoCuidado"
+          name="duracionTipoCuidado"
+          [(ngModel)]="duracionTipoCuidado"
+        >
+          <option value="">Seleccionar...</option>
+          @for (opcion of tiposDuracion; track opcion.id) {
+            <option [value]="opcion.id">{{ opcion.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="fechaInicioCuidado">
+          Fecha y hora de inicio
+        </label>
+        <input
+          class="indicacion-input"
+          id="fechaInicioCuidado"
+          name="fechaInicioCuidado"
+          type="datetime-local"
+          [(ngModel)]="fechaInicioCuidado"
+        />
+      </div>
+    </div>
+
+    <!-- Observaciones del cuidado: ocupan su propia fila completa -->
+    <div class="indicacion-fila">
+      <div class="indicacion-campo indicacion-campo--completo">
+        <label class="indicacion-etiqueta" for="observacionesCuidado">Observaciones</label>
+        <textarea
+          class="indicacion-input indicacion-textarea"
+          id="observacionesCuidado"
+          name="observacionesCuidado"
+          placeholder="Indicaciones adicionales..."
+          maxlength="2000"
+          [(ngModel)]="observacionesCuidado"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Acciones del formulario -->
+    <div class="acciones-formulario indicacion-acciones">
+      <button
+        type="button"
+        class="btn _cancelar"
+        [disabled]="guardando"
+        (click)="limpiarFormularioCuidado()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="btn _guardar"
+        [disabled]="!puedeGuardarCuidado || (cuidadoEnEdicion !== null && !hayCambiosEnEdicion)"
+      >
+        {{ textoBotonGuardar }}
+      </button>
+    </div>
+  </form>
+  }
+</section>
+
+<!-- Atenciones indicadas en el episodio actual -->
+<section class="panel panel-indicados" aria-labelledby="tituloAtencionesIndicadas">
+  <h3 class="panel-titulo indicacion-titulo" id="tituloAtencionesIndicadas">Atenciones indicadas</h3>
+
+  <!-- Filtros del listado: cada opción muestra los cuidados que están en un estado -->
+  <div class="indicados-filtros" role="group" aria-label="Filtrar cuidados indicados por estado">
+    @for (filtro of filtrosCuidado; track filtro.id) {
+      <button
+        type="button"
+        class="indicados-filtro"
+        [class.indicados-filtro--activo]="filtroCuidado === filtro.id"
+        [attr.aria-pressed]="filtroCuidado === filtro.id"
+        (click)="seleccionarFiltroCuidado(filtro.id)"
+      >
+        {{ filtro.etiqueta }}
+      </button>
+    }
+  </div>
+
+  <!-- Listado de cuidados: solo las tarjetas se desplazan bajo el título y los filtros fijos -->
+  <div class="indicados-lista">
+    @if (cargando) {
+      <p class="indicacion-vacio">Cargando cuidados...</p>
+    } @else if (sinEpisodioActivo) {
+      <p class="indicacion-vacio">Abra un episodio para consultar sus cuidados.</p>
+    } @else if (errorCarga) {
+      <p class="indicacion-vacio">No se pudieron cargar los cuidados. Intente nuevamente.</p>
+    } @else {
+      @for (cuidado of cuidadosFiltrados; track cuidado.id) {
+        <article
+          class="indicacion-card"
+          [ngClass]="'indicacion-card--' + tonoCuidado(cuidado)"
+          [class.indicacion-card--menu-abierto]="menuIndicacionAbierta === cuidado.id"
+          [class.indicacion-card--edicion]="cuidadoEnEdicion === cuidado.id"
+          [attr.data-cuidado-id]="cuidado.id"
+        >
+          <header class="indicacion-encabezado">
+            <span class="indicacion-nombre">{{ cuidado.nombre }}</span>
+
+            <!-- Menú de opciones de la tarjeta: se despliega sobre ella sin cambiar su tamaño -->
+            @if (puedeGestionar(cuidado.usuarioId)) {
+            <button
+              type="button"
+              class="indicacion-menu-trigger"
+              title="Más opciones"
+              aria-haspopup="menu"
+              [attr.aria-label]="'Más opciones para el cuidado ' + cuidado.nombre"
+              [attr.aria-expanded]="menuIndicacionAbierta === cuidado.id"
+              (click)="alternarMenuIndicacion(cuidado.id)"
+            >
+              <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+            </button>
+            }
+          </header>
+
+          <ul class="indicacion-badges">
+            <li>{{ textoRealizacion(cuidado) }}</li>
+          </ul>
+
+          @if (cuidado.observaciones) {
+            <p class="indicacion-observaciones">{{ cuidado.observaciones }}</p>
+          }
+
+          <footer class="indicacion-meta">
+            <span><i class="bi bi-calendar3" aria-hidden="true"></i>{{ cuidado.fecha }}</span>
+            <span><i class="bi bi-clock" aria-hidden="true"></i>{{ cuidado.hora }}</span>
+            <span><i class="bi bi-person" aria-hidden="true"></i>{{ cuidado.medico }}</span>
+            <button
+              type="button"
+              class="indicacion-menu-trigger indicacion-meta-toggle"
+              [attr.aria-expanded]="registrosAbiertos(cuidado.id)"
+              [attr.aria-controls]="'registros-' + cuidado.id"
+              [attr.aria-label]="
+                registrosAbiertos(cuidado.id)
+                  ? 'Ocultar registros de Enfermería'
+                  : 'Mostrar registros de Enfermería'
+              "
+              [title]="
+                registrosAbiertos(cuidado.id)
+                  ? 'Ocultar registros de Enfermería'
+                  : 'Mostrar registros de Enfermería'
+              "
+              (click)="alternarRegistros(cuidado)"
+            >
+              <i
+                class="bi"
+                [class.bi-chevron-up]="registrosAbiertos(cuidado.id)"
+                [class.bi-chevron-down]="!registrosAbiertos(cuidado.id)"
+                aria-hidden="true"
+              ></i>
+            </button>
+          </footer>
+
+          <!-- Ejecuciones que ya realizó Enfermería -->
+          @if (registrosAbiertos(cuidado.id)) {
+            <div class="indicacion-registros" [attr.id]="'registros-' + cuidado.id">
+              @if (cargandoRegistros) {
+                <p class="indicacion-vacio">Cargando registros de Enfermería...</p>
+              } @else if (errorRegistros) {
+                <p class="indicacion-vacio">
+                  No se pudieron cargar los registros. Cierre y vuelva a desplegar la tarjeta.
+                </p>
+              } @else if (registrosDe(cuidado.id).length) {
+                <div class="aplicaciones-historial">
+                  <table class="aplicaciones-tabla" aria-label="Registros de Enfermería">
+                    <thead>
+                      <tr>
+                        <th class="aplicaciones-tabla_numero" scope="col">No.</th>
+                        <th class="aplicaciones-tabla_fecha" scope="col">Fecha programada</th>
+                        <th class="aplicaciones-tabla_fecha" scope="col">Fecha de registro</th>
+                        <th class="aplicaciones-tabla_estado celda_centrada" scope="col">Estado</th>
+                        <th class="aplicaciones-tabla_usuario" scope="col">Usuario</th>
+                        <th class="aplicaciones-tabla_acciones" scope="col">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (registro of registrosDe(cuidado.id); track registro.id) {
+                        <tr [class.aplicaciones-fila--resultados]="resultadoAbierto === registro.id">
+                          <td class="aplicaciones-tabla_numero">{{ registro.numero }}</td>
+                          <td class="aplicaciones-tabla_fecha">
+                            {{ registro.fechaHoraProgramada }}
+                          </td>
+                          <td class="aplicaciones-tabla_fecha">{{ registro.fechaRegistro }}</td>
+                          <td class="aplicaciones-tabla_estado celda_centrada">
+                            <i
+                              class="bi"
+                              [class.bi-check-circle-fill]="registro.esPositivo"
+                              [class.bi-x-circle-fill]="!registro.esPositivo"
+                              [class.registro-positivo]="registro.esPositivo"
+                              [class.registro-negativo]="!registro.esPositivo"
+                              role="img"
+                              [attr.aria-label]="registro.estado"
+                              [attr.title]="registro.estado"
+                            ></i>
+                          </td>
+                          <td>{{ registro.usuario }}</td>
+                          <td class="aplicaciones-tabla_acciones">
+                            <div class="aplicaciones-acciones">
+                              @if (tieneDetalle(registro)) {
+                                <button
+                                  type="button"
+                                  class="aplicaciones-accion aplicaciones-accion--resultados"
+                                  [title]="
+                                    resultadoAbierto === registro.id
+                                      ? 'Ocultar detalle'
+                                      : 'Ver detalle'
+                                  "
+                                  [attr.aria-label]="
+                                    resultadoAbierto === registro.id
+                                      ? 'Ocultar detalle del registro'
+                                      : 'Ver detalle del registro'
+                                  "
+                                  [attr.aria-expanded]="resultadoAbierto === registro.id"
+                                  (click)="verResultados(registro)"
+                                >
+                                  <i
+                                    class="bi"
+                                    [class.bi-eye]="resultadoAbierto !== registro.id"
+                                    [class.bi-eye-slash]="resultadoAbierto === registro.id"
+                                    aria-hidden="true"
+                                  ></i>
+                                </button>
+                              }
+                            </div>
+                          </td>
+                        </tr>
+
+                        @if (tieneDetalle(registro) && resultadoAbierto === registro.id) {
+                          <tr class="aplicaciones-resultados">
+                            <td colspan="6">
+                              <div class="resultado-control">
+                                @if (registro.monitoreoTipo === null) {
+                                  <div class="resultado-control_observacion">
+                                    <span class="resultado-control_observacion-etiqueta">
+                                      Observación
+                                    </span>
+                                    <p>{{ registro.observacion.trim() || 'Sin observación' }}</p>
+                                  </div>
+                                }
+
+                                @if (cargandoResultado) {
+                                  <p class="resultado-control_estado">Cargando resultados...</p>
+                                } @else if (errorResultado) {
+                                  <p class="resultado-control_estado">
+                                    No se pudieron cargar los resultados del control.
+                                  </p>
+                                } @else if (resultadoActual; as resultado) {
+                                  <dl class="resultado-control_grid">
+                                    @for (fila of resultado.filas; track fila.etiqueta) {
+                                      <div>
+                                        <dt>{{ fila.etiqueta }}</dt>
+                                        <dd [class.valor-fuera-rango]="fila.fueraRango">{{ fila.valor }}</dd>
+                                      </div>
+                                    }
+                                  </dl>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="indicacion-vacio">Enfermería no ha registrado ejecuciones.</p>
+              }
+            </div>
+          }
+
+          <!-- Menú de opciones: se dibuja al final de la tarjeta y flota sobre ella -->
+          @if (menuIndicacionAbierta === cuidado.id && puedeGestionar(cuidado.usuarioId)) {
+            <div
+              class="indicacion-menu"
+              role="menu"
+              [attr.aria-label]="'Opciones para el cuidado ' + cuidado.nombre"
+            >
+              <div class="indicacion-menu-opcion">
+                <span>Editar</span>
+                <button
+                  type="button"
+                  class="iconEditar"
+                  role="menuitem"
+                  title="Editar cuidado"
+                  [attr.aria-label]="'Editar el cuidado ' + cuidado.nombre"
+                  [disabled]="guardando || eliminando"
+                  (click)="editarCuidado(cuidado); cerrarMenuIndicacion()"
+                >
+                  <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <div class="indicacion-menu-opcion">
+                <span>Eliminar</span>
+                <button
+                  type="button"
+                  class="iconQuitar"
+                  role="menuitem"
+                  title="Eliminar cuidado"
+                  [attr.aria-label]="'Eliminar el cuidado ' + cuidado.nombre"
+                  [disabled]="guardando || eliminando"
+                  (click)="eliminarCuidado(cuidado)"
+                >
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </article>
+      } @empty {
+        <p class="indicacion-vacio">{{ mensajeSinCuidados }}</p>
+      }
+    }
+  </div>
+</section>

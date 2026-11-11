@@ -1,0 +1,652 @@
+/* ==================== CONTENEDOR (SECCIONES / EXAMEN / HALLAZGOS) ==================== */
+/* La pantalla ocupa exactamente el alto disponible: los paneles se ajustan y nunca empujan el
+   documento para provocar el scroll del navegador. */
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Rejilla del área de trabajo. Las áreas con nombre fijan el orden visual de los paneles
+   (secciones, examen, hallazgos) y cada pista flexible lleva mínimo 0 para que la rejilla
+   pueda encogerse sin desbordar. */
+.evaluacion {
+  /* Ancho del bloque de datos del paciente: lo comparten el propio bloque y su pestaña */
+  --ficha-ancho: 340px;
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.7fr) minmax(290px, 1fr);
+  grid-template-areas: 'secciones examen hallazgos';
+  grid-template-rows: minmax(0, 1fr);
+  gap: 1.25rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 1.5rem;
+  overflow: hidden;
+  align-items: start;
+}
+
+/* Bloque de datos abierto: las secciones se reducen al carril de iconos (64px) y se reserva a la
+   derecha el ancho del bloque, que queda pegado al borde de la pantalla sin cubrir los paneles. */
+.evaluacion--ficha-abierta {
+  padding-right: calc(var(--ficha-ancho) + 1.5rem);
+}
+
+/* Sección que muestra siempre el bloque de datos del paciente (historia clínica): el bloque
+   compartido se dibuja desplegado y sin pestaña, y la rejilla le reserva su ancho. */
+.evaluacion--datos-paciente {
+  padding-right: calc(var(--ficha-ancho) + 1.5rem);
+}
+
+/* Secciones que no registran hallazgos del examen físico (historia clínica y diagnóstico): la rejilla
+   prescinde de la columna de hallazgos para que el panel de la sección use el ancho libre. */
+.evaluacion--sin-hallazgos {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'secciones examen';
+}
+
+.panel {
+  padding: 1.5rem;
+  border: 1px solid #dfe7f3;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+/* El panel de secciones es solo el contenedor de las tarjetas: sin fondo ni borde
+   propios, para que las tarjetas blancas se apoyen sobre el fondo de la página,
+   igual que la lista de tarjetas de Catálogos. Sin relleno izquierdo para que el
+   título y las tarjetas queden arrimados al borde del área de trabajo. */
+.panel-secciones {
+  grid-area: secciones;
+  max-height: 100%;
+  overflow-y: auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-left: 0;
+}
+
+/* El contenido de la sección activa (examen físico, historia clínica o diagnóstico) ocupa el área
+   central de la rejilla (ver grid-template-areas) y se desplaza por dentro si lo necesita */
+.panel-seccion {
+  grid-area: examen;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* Panel de hallazgos: el título queda fijo y las tarjetas se desplazan dentro del panel */
+.panel-hallazgos {
+  grid-area: hallazgos;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.hallazgos-lista {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 10px 8px 6px;
+  overflow-y: auto;
+}
+
+.panel-titulo {
+  margin: 0 0 1rem;
+  color: var(--azulPrincipal);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+/* ==================== SECCIONES ==================== */
+/* La tarjeta del panel de secciones (.tarjeta) usa el estilo compartido src/styles/tarjetaStyle.scss */
+
+/* ==================== FICHA DEL PACIENTE ==================== */
+/* La ficha con los datos del paciente la dibuja el componente compartido app-datos-paciente, que
+   trae sus propios estilos; esta pantalla solo le reserva el ancho del bloque. */
+
+/* ==================== SECCIONES COLAPSADAS (CARRIL DE ICONOS) ==================== */
+/* Con la ficha abierta las secciones se reducen a sus iconos para que el examen físico y los
+   hallazgos ocupen el espacio libre. Los textos siguen en el DOM (ocultos a la vista) y cada
+   tarjeta usa el título de su sección como title y aria-label. */
+.panel-secciones--rail {
+  padding: 0;
+
+  .tarjeta {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 12px;
+    padding: 0;
+    border-width: 1px;
+    border-radius: 12px;
+  }
+
+  .tarjeta_icono {
+    width: auto;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+  }
+
+  .tarjeta--activa {
+    border-left: 3px solid var(--azulSecundario);
+    background-color: #eef5ff;
+  }
+
+  .tarjeta_texto {
+    display: none;
+  }
+}
+
+/* Utilidad de accesibilidad: conserva el texto para lectores de pantalla sin ocupar espacio */
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==================== EXAMEN FÍSICO ==================== */
+.examen-titulo {
+  font-size: 1.5rem;
+}
+
+.examen-ayuda {
+  margin: 0 0 1.25rem;
+  color: #5b6b85;
+  font-size: 1rem;
+}
+
+/* Selector de la parte del cuerpo: una sola lista desplegable con las regiones del catálogo, con el
+   mismo lenguaje de los desplegables del proyecto (.campo-formulario select y .desplegable) y de los
+   campos del módulo (.egreso-input, .indicacion-input, .medicamento-input). */
+.parte-cuerpo-campo {
+  display: flex;
+  flex-direction: column;
+  /* La lista no se estira al ancho del panel: se queda con el ancho de su contenido */
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.parte-cuerpo-label {
+  margin-bottom: 10px;
+  color: var(--azulPrincipal);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.parte-cuerpo-select {
+  box-sizing: border-box;
+  /* Ancho justo: el de la opción más larga del catálogo, con un mínimo legible para que la lista no
+     quede diminuta y un tope para que no desborde el panel en pantallas angostas */
+  width: auto;
+  min-width: 200px;
+  max-width: 100%;
+  min-height: 45px;
+  padding: 10px 12px;
+  border: 1px solid #cfdcee;
+  border-radius: 14px;
+  background: #fff;
+  color: #21324d;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:focus,
+  &:focus-visible {
+    border-color: var(--azulSecundario);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+  }
+
+  /* Mientras hay una consulta en curso el selector no admite cambios */
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+/* Captura de hallazgos */
+.hallazgo-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.hallazgo-label {
+  margin-bottom: 10px;
+  color: var(--azulPrincipal);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.hallazgo-campo {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 190px;
+  padding: 14px 16px;
+  border: 1px solid #cfdcee;
+  border-radius: 14px;
+  background: #fff;
+  color: #21324d;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+  }
+}
+
+.contador-caracteres {
+  align-self: flex-end;
+  margin-top: 6px;
+  color: #7a8a9e;
+  font-size: 0.95rem;
+}
+
+/* Separación y línea divisoria de la fila de acciones compartida (.acciones-formulario) */
+.hallazgo-acciones {
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e4ebf5;
+}
+
+/* ==================== HALLAZGOS REGISTRADOS ==================== */
+/* Tarjeta del hallazgo: fondo y borde con acento verde, sombra teñida y pastilla para la parte
+   del cuerpo. Es un acabado visual; la interacción no cambia. */
+.hallazgo-card {
+  position: relative;
+  margin-bottom: 1rem;
+  padding: 1.05rem 1.15rem;
+  border: 1px solid #d7eee1;
+  border-left: 6px solid #22c55e;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f6fcf9 55%, #eafaf1 100%);
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.12);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 10px 24px rgba(34, 197, 94, 0.18);
+    transform: translateY(-2px);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Con el menú desplegado la tarjeta pasa al frente para dibujarse sobre las siguientes */
+  &.hallazgo-card--menu-abierto {
+    z-index: 2;
+  }
+
+  /* Tarjeta cuyos datos están cargados en el formulario para corregirlos */
+  &.hallazgo-card--edicion {
+    border-color: #fde5b8;
+    border-left-color: #f59e0b;
+    background: linear-gradient(135deg, #ffffff 0%, #fffaf1 55%, #fff1d9 100%);
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.16);
+
+    &:hover {
+      box-shadow: 0 10px 24px rgba(245, 158, 11, 0.22);
+    }
+
+    .hallazgo-nombre {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      color: #fff;
+      box-shadow: 0 3px 8px rgba(245, 158, 11, 0.28);
+    }
+
+    .hallazgo-meta {
+      border-top-color: #f8e3bd;
+
+      i {
+        color: #d97706;
+      }
+    }
+
+    .hallazgo-menu-trigger {
+      color: #b45309;
+      border-color: rgba(245, 158, 11, 0.3);
+
+      &:hover,
+      &:focus-visible {
+        color: #b45309;
+        border-color: rgba(245, 158, 11, 0.55);
+      }
+    }
+  }
+}
+
+.hallazgo-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* La parte del cuerpo se lee como una pastilla verde con más presencia */
+.hallazgo-nombre {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #159f4a, #34d399);
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(22, 163, 74, 0.28);
+}
+
+.hallazgo-descripcion {
+  margin: 0;
+  color: #1f2f45;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.hallazgo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #d9f0e3;
+  color: #33445e;
+  font-size: 0.95rem;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  i {
+    color: #16a34a;
+    font-size: 1.05rem;
+  }
+}
+
+/* ==================== MENÚ DE OPCIONES DE LA TARJETA ==================== */
+/* Botón de tres puntos de la tarjeta de hallazgo, igual que el de indicaciones médicas. */
+.hallazgo-menu-trigger {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  color: #15803d;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    color: #15803d;
+    background: #fff;
+    border-color: rgba(34, 197, 94, 0.45);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--azulSecundario);
+    outline-offset: 2px;
+  }
+}
+
+/* El menú flota sobre la tarjeta: al no ocupar espacio en el flujo, desplegarlo y replegarlo no
+   redimensiona la tarjeta ni desplaza el resto del listado. */
+.hallazgo-menu {
+  position: absolute;
+  z-index: 3;
+  top: 2.7rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 162px;
+  max-width: calc(100% - 2rem);
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #dfe7f3;
+  border-radius: 12px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+
+  /* Botón de editar: el ámbar viene de los estilos globales de src/styles/botonesStyle.scss */
+  .iconEditar {
+    width: 34px;
+    height: 34px;
+    box-shadow: none;
+    font-size: 17px;
+  }
+}
+
+/* Cada opción alinea su nombre a la izquierda y su botón a la derecha */
+.hallazgo-menu-opcion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Botón de eliminar: mismo tratamiento del botón equivalente de las indicaciones médicas */
+.iconQuitar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  color: #ed1a0f;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(26, 37, 53, 0.12);
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    color: #fff;
+    background: #ed1a0f;
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ed1a0f;
+    outline-offset: 2px;
+  }
+}
+
+/* ==================== ESTADOS ==================== */
+.hallazgo-card--cargando {
+  border-color: #e6ecf5;
+  background: #fff;
+}
+
+.skeleton-encabezado {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.skeleton-lineas {
+  flex: 1;
+  min-width: 0;
+}
+
+.skeleton-linea {
+  display: block;
+  width: 100%;
+  height: 12px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  animation: pulsoSkeleton 1.4s ease-in-out infinite;
+}
+
+.skeleton-linea--media {
+  width: 60%;
+}
+
+.skeleton-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #eef2f7;
+
+  .skeleton-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #b6c2d4;
+  }
+
+  .skeleton-linea {
+    width: 70px;
+    margin-bottom: 0;
+  }
+}
+
+.hallazgos-vacio {
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px dashed #cfdcee;
+  border-radius: 14px;
+  color: #5b6b85;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+@keyframes pulsoSkeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ==================== RESPONSIVIDAD ==================== */
+@media (max-width: 1280px) {
+  /* Los hallazgos pasan a una fila completa para no dejar el examen físico demasiado estrecho */
+  .evaluacion {
+    grid-template-columns: auto minmax(0, 1.5fr);
+    grid-template-areas:
+      'secciones examen'
+      'hallazgos hallazgos';
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  /* Sin panel de hallazgos solo queda la fila de las secciones y el área central */
+  .evaluacion--sin-hallazgos {
+    grid-template-areas: 'secciones examen';
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  /* Una sola columna: cada bloque en su propia fila. El bloque de datos conserva el ancho de su
+     pestaña para que esta siga siendo visible y se apoye en el borde izquierdo de la pantalla. */
+  :host {
+    height: auto;
+  }
+
+  .evaluacion {
+    --ficha-ancho: calc(100% - 40px);
+
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'secciones'
+      'examen'
+      'hallazgos';
+    grid-template-rows: none;
+    height: auto;
+    overflow: visible;
+    padding: 1rem;
+  }
+
+  /* En una sola columna la página desplaza el contenido; los paneles no necesitan
+     un desplazamiento interno */
+  .panel-secciones,
+  .panel-seccion,
+  .panel-hallazgos {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .hallazgos-lista {
+    padding-right: 0;
+    overflow-y: visible;
+  }
+
+  /* Los bloques cubren casi toda la pantalla, así que no hace falta reservarles espacio extra */
+  .evaluacion--ficha-abierta,
+  .evaluacion--datos-paciente {
+    padding-right: 1rem;
+  }
+
+  /* Sin panel de hallazgos no hay fila que conservar */
+  .evaluacion--sin-hallazgos {
+    grid-template-areas:
+      'secciones'
+      'examen';
+  }
+}
+
+@media (max-width: 640px) {
+  .evaluacion {
+    padding: 12px;
+    gap: 16px;
+  }
+
+  .panel-secciones .tarjeta,
+  .panel-seccion,
+  .panel-hallazgos {
+    border-radius: 16px;
+  }
+
+  .hallazgo-campo {
+    min-height: 160px;
+  }
+}

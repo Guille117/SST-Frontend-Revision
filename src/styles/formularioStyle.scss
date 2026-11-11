@@ -1,0 +1,111 @@
+.formulario{
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.formulario-container {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.formulario-container .titulo-formulario {
+    flex: 0 0 auto;
+    background: linear-gradient(115deg, #24447e, #2864e8);
+    color: #ffffff;
+}
+
+.formulario-container > form {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 8px 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.formulario > form {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.titulo-formulario {
+    background-color: var(--azulSecundario);
+    color: white;
+    margin: 0 0 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 15px 25px;
+    border-radius: 28px 28px 0 0;
+}
+
+.campo-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    label {
+        font-weight: 600;
+        color: #101828;
+    }
+
+    input,
+    select {
+        padding: 12px 10px;
+        border: 1px solid #CBD5E1;
+        border-radius: 10px;
+        font-size: 16px;
+        width: 100%;
+        min-height: 44px;
+        box-sizing: border-box;
+        background-color: white;
+        color: #101828;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus,
+    select:focus {
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+    }
+
+    select {
+        cursor: pointer;
+    }
+}
+
+.desplegable {
+    padding: 12px 10px;
+    border: 1px solid #CBD5E1;
+    border-radius: 10px;
+    background-color: white;
+    color: #101828;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 16px;
+
+    // Estilos para las opciones de adentro (Solo permite esto)
+    option {
+        background-color: white;
+        color: #1A2535;
+        padding: 12px; /* Algunos navegadores lo ignoran */
+        font-size: 16px;
+        
+        &:hover, &:checked {
+            background-color: #1A2535 !important; /* Cambia el azul por defecto */
+            color: white !important;
+        }
+    }
+}
+
+.mensaje-error {
+    color: #ff1900;
+    font-size: 0.9rem;
+}

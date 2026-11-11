@@ -1,0 +1,28 @@
+<div class="principal">
+  <!-- La selección del paciente es la pantalla de entrada: sin submódulos -->
+  @if (submenuVisible()) {
+    <nav class="subMenuNav">
+      @if (permisos.puedeLeerSubmodulo('ENF-MONITOREO')) {
+        <div class="option" routerLink="monitoreo" routerLinkActive="active">Monitoreo</div>
+      }
+      @if (permisos.puedeLeerSubmodulo('ENF-TRATAMIENTOS')) {
+        <div class="option" routerLink="tratamientos" routerLinkActive="active">
+          Indicaciones médicas
+        </div>
+      }
+      @if (permisos.puedeLeerSubmodulo('ENF-NOTAS')) {
+        <div class="option" routerLink="notas" routerLinkActive="active">Notas de enfermería</div>
+      }
+
+      @if (permisos.puedeEditarModulo('ENFERMERIA')) {
+        <button type="button" class="btn cerrar-episodio" (click)="cerrarEpisodio()">
+          Cerrar episodio
+        </button>
+      }
+    </nav>
+  }
+
+  <div class="contenido" [class.solo-lectura]="permisos.soloLecturaModulo('ENFERMERIA')">
+    <router-outlet></router-outlet>
+  </div>
+</div>

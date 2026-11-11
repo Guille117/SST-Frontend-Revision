@@ -1,0 +1,530 @@
+<div class="areaTrabajo-container">
+    @if(isCargandoProducto){
+        <div class="trabajoArea trabajoArea2">
+        <section class="table-container" aria-label="Listado de medicamentos">
+        <div class="seccionSuperior">
+            <!-- ==================== BUSCADOR ==================== -->
+            <div class="buscador-container">
+            <div class="buscador">
+                    <input
+                        class="inputB"
+                        type="search"
+                        name="textoBusqueda"
+                        [placeholder]="isMedicamento ? 'Buscar medicamento...' : 'Buscar insumo...'"
+                        [attr.aria-label]="isMedicamento ? 'Buscar medicamento por nombre' : 'Buscar insumo por nombre'"
+                        [(ngModel)]="textoBusqueda"
+                        [disabled]="hayProductoSeleccionado"
+                        (keydown.enter)="buscarProductos()"
+                    />
+                <button
+                type="button"
+                class="btnLupa"
+                title="Buscar producto"
+                aria-label="Buscar producto"
+                [disabled]="hayProductoSeleccionado"
+                (click)="buscarProductos()"
+                >
+                <i class="bi bi-search fs-5" aria-hidden="true"></i>
+                </button>
+            </div>
+            </div>
+            <!-- ==================== FILTRO DE ESTADO ==================== -->
+            <div class="miniSub-container">
+            <app-tab-switch
+                op1="Medicamentos"
+                op2="Insumos"
+                tabindex="0"
+                role="group"
+                aria-label="Tipo de producto"
+                [mostrarActivos]="isMedicamento"
+                [disabled]="hayProductoSeleccionado"
+                (opcionCambiada)="cambiarTipoProducto($event)"
+            ></app-tab-switch>            
+                
+            </div>
+        </div>
+
+        <!-- ==================== TABLA DE MEDICAMENTOS ==================== -->
+        <div class="tabla-container">
+            <table class="table" aria-label="Medicamentos">
+            <thead>
+                <tr>
+                <th scope="col" class="celda_centrada">No.</th>
+                <th scope="col" class="celda_izquierda">Nombre</th>
+                @if(isMedicamento){
+                    <th scope="col" class="celda_izquierda">Fabricante</th>
+                    <th scope="col" class="celda_centrada">Concentración</th>
+                    <th scope="col" class="celda_izquierda">Presentación</th>
+                    <th scope="col" class="celda_centrada">Vía de administración</th>
+                    }@else {
+                    <th scope="col" class="celda_izquierda">Descripción</th>
+                    }
+                <th scope="col" class="celda_centrada celda-acciones"></th>
+
+                </tr>
+            </thead>
+            <tbody>
+                @if (cargandoProductos) {
+                <tr>
+                    <td [attr.colspan]="isMedicamento ? 7 : 4" class="celda_centrada" role="status">
+                    {{ isMedicamento ? 'Cargando medicamentos...' : 'Cargando insumos...' }}
+                    </td>
+                </tr>
+                } @else if (!busquedaRealizada) {
+                <tr>
+                    <td [attr.colspan]="isMedicamento ? 7 : 4" class="celda_centrada">
+                    Busque un producto
+                    </td>
+                </tr>
+                } @else if (isMedicamento) {
+                    @for (med of medicamentos | slice:(paginaActual - 1) * cantidadMostrar:paginaActual * cantidadMostrar; track med.id) {
+                    <tr
+                        [class.selected-row]="productoSeleccionadoId === med.id"
+                        [class.fila-bloqueada]="hayProductoSeleccionado && productoSeleccionadoId !== med.id"
+                        tabindex="0"
+                        (click)="seleccionarProducto(med.id)"
+                        (keydown.enter)="seleccionarProducto(med.id)"
+                    >
+                        <td class="celda_centrada">
+                        {{ (paginaActual - 1) * cantidadMostrar + $index + 1 }}
+                        </td>
+                        <td class="celda_izquierda">{{ med.nombre }}</td>
+                        <td class="celda_izquierda">{{ med.marca }}</td>
+                        <td class="celda_centrada">{{ med.dosis }} {{ med.unidadMedida }}</td>
+                        <td class="celda_izquierda">{{ med.presentacion }}</td>
+                        <td class="celda_centrada">{{ med.viaAdministracion }}</td>
+                        <td class="celda_centrada celda-acciones">
+                        @if (productoSeleccionadoId === med.id) {
+                            <button
+                            type="button"
+                            class="iconQuitar"
+                            title="Quitar selección"
+                            aria-label="Quitar selección de {{ med.nombre }}"
+                            (click)="$event.stopPropagation(); deseleccionarProducto()"
+                            >
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                            </button>
+                        }
+                        </td>
+                    </tr>
+                    } @empty {
+                    <tr>
+                        <td colspan="7" class="celda_centrada">No se encontraron medicamentos.</td>
+                    </tr>
+                    }
+                } @else {
+                    @for (insumo of insumos | slice:(paginaActual - 1) * cantidadMostrar:paginaActual * cantidadMostrar; track insumo.id) {
+                    <tr
+                        [class.selected-row]="productoSeleccionadoId === insumo.id"
+                        [class.fila-bloqueada]="hayProductoSeleccionado && productoSeleccionadoId !== insumo.id"
+                        tabindex="0"
+                        (click)="seleccionarProducto(insumo.id)"
+                        (keydown.enter)="seleccionarProducto(insumo.id)"
+                    >
+                        <td class="celda_centrada">
+                        {{ (paginaActual - 1) * cantidadMostrar + $index + 1 }}
+                        </td>
+                        <td class="celda_izquierda">{{ insumo.nombre }}</td>
+                        <td class="celda_izquierda">{{ insumo.detalle }}</td>
+                        <td class="celda_centrada celda-acciones">
+                        @if (productoSeleccionadoId === insumo.id) {
+                            <button
+                            type="button"
+                            class="iconQuitar"
+                            title="Quitar selección"
+                            aria-label="Quitar selección de {{ insumo.nombre }}"
+                            (click)="$event.stopPropagation(); deseleccionarProducto()"
+                            >
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                            </button>
+                        }
+                        </td>
+                    </tr>
+                    } @empty {
+                    <tr>
+                        <td colspan="4" class="celda_centrada">No se encontraron insumos.</td>
+                    </tr>
+                    }
+                }
+            </tbody>
+            @if (busquedaRealizada) {
+            <tfoot>
+                <tr>
+                <td [attr.colspan]="isMedicamento ? 7 : 4">
+                    <div
+                    class="paginacion-bloqueada"
+                    [class.bloqueada]="hayProductoSeleccionado"
+                    [attr.aria-disabled]="hayProductoSeleccionado || null"
+                    >
+                    <app-paginacion
+                    [paginaActual]="paginaActual"
+                    [totalregistros]="totalRegistros"
+                    [cantidadMostrar]="cantidadMostrar"
+                    [textoAlterno]="textoAlternoPaginacion"
+                    [alternoPrimero]="true"
+                    (paginaCambiada)="cambiarPagina($event)"
+                    ></app-paginacion>
+                    </div>
+                </td>
+                </tr>
+            </tfoot>
+            }
+            </table>
+        </div>
+        </section>
+
+        <!-- ==================== FORMULARIO ==================== -->
+        <section class="formulario formulario-container" aria-labelledby="tituloMedicamento">
+        <h3 id="tituloMedicamento" class="titulo-formulario">
+        Agregar detalle de lote
+        </h3>
+        
+            <form #medicamentoForm="ngForm" novalidate (ngSubmit)="agregarLote(medicamentoForm)">
+                <div class="fila">
+                    <app-campo-validado
+                        label="Lote"
+                        fieldId="nombreMedicamento"
+                        [required]="true"
+                        [showError]="!!loteCtrl.touched && !codigoLote.trim()"
+                        errorMessage="Ingrese el código del lote"
+                    >
+                    <input
+                        id="nombreMedicamento"
+                        name="nombre"
+                        type="text"
+                        placeholder="Lote del medicamento"
+                        [(ngModel)]="codigoLote"
+                        required
+                        #loteCtrl="ngModel"
+                    />
+                    </app-campo-validado>
+
+                    <app-campo-validado
+                        label="Fecha de vencimiento"
+                        fieldId="concentracionMedicamento"
+                        [required]="isMedicamento"
+                        [showError]="!!fechaCtrl.touched && isMedicamento && !fechaVencimiento"
+                        errorMessage="Seleccione la fecha de vencimiento"
+                    >
+                        <input
+                        id="concentracionMedicamento"
+                        name="concentracion"
+                        type="date"
+                        placeholder="Fecha de vencimiento"
+                        [required]="isMedicamento"
+                        [(ngModel)]="fechaVencimiento"
+                        #fechaCtrl="ngModel"
+                        />
+                    </app-campo-validado>
+                </div>
+
+                <div class="fila">
+                    <app-campo-validado
+                        label="Precio compra"
+                        fieldId="precioCompraMedicamento"
+                        [required]="true"
+                        [showError]="!!precioCompraCtrl.touched && precioCompra === null"
+                        errorMessage="Ingrese el precio de compra"
+                    >
+                    <input
+                        id="precioCompraMedicamento"
+                        name="precioCompra"
+                        type="number"
+                        placeholder="Precio de compra"
+                        [(ngModel)]="precioCompra"
+                        required
+                        #precioCompraCtrl="ngModel"
+                    />
+                    </app-campo-validado>
+
+                    <app-campo-validado
+                        label="Precio venta"
+                        fieldId="precioVentaMedicamento"
+                        [required]="true"
+                        [showError]="!!precioVentaCtrl.touched && precioVenta === null"
+                        errorMessage="Ingrese el precio de venta"
+                    >
+                        <input
+                        id="precioVentaMedicamento"
+                        name="precioVenta"
+                        type="number"
+                        placeholder="Precio de venta"
+                        [(ngModel)]="precioVenta"
+                        required
+                        #precioVentaCtrl="ngModel"
+                        />
+                    </app-campo-validado>
+
+                </div>
+
+                <div class="fila">
+                    <app-campo-validado
+                        label="Cantidad"
+                        fieldId="cantidadMedicamento"
+                        [required]="true"
+                        [showError]="
+                            !!cantidadCtrl.touched &&
+                            ((cantidad ?? 0) <= 0 || (cantidad ?? 0) < cantidadMinimaLote)
+                        "
+                        [errorMessage]="
+                            (cantidad ?? 0) <= 0
+                                ? 'Ingrese una cantidad mayor a 0'
+                                : 'La cantidad no puede ser menor a ' +
+                                  cantidadMinimaLote +
+                                  ' (unidades ya entregadas)'
+                        "
+                    >
+                    <input
+                        id="cantidadMedicamento"
+                        name="cantidad"
+                        type="number"
+                        placeholder="Cantidad"
+                        [(ngModel)]="cantidad"
+                        [min]="cantidadMinimaLote"
+                        required
+                        #cantidadCtrl="ngModel"
+                    />
+                    </app-campo-validado>
+                </div>
+
+            <!-- ==================== BOTONES ==================== -->
+            <div class="botones">
+            <button
+                type="button"
+                class="btn _cancelar"
+                (click)="cancelarPaso1(medicamentoForm)"
+            >
+                Cancelar
+            </button>
+                <button type="submit" class="btn _guardar" [disabled]="medicamentoForm.invalid">
+                {{ editandoLote ? 'Actualizar lote' : 'Agregar productos' }}
+                </button>
+            </div> 
+        </form>
+        </section>
+    </div>
+    }@else {
+        <div class="trabajoArea paso2">
+            <section>
+            <h2 style="margin-bottom: 15px;">Lista de productos agregados</h2>
+            <table class="table"> 
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Producto</th>
+                        <th>Lote</th>
+                        <th>Vencimiento</th>
+                        <th>Precio compra</th>
+                        <th>Precio venta</th>
+                        <th>Cantidad</th>
+                        <th class="celda_centrada">Acciones</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (lote of lotes; track $index) {
+                    <tr>
+                        <td class="celda_centrada">{{ $index + 1 }}</td>
+                        <td class="celda_izquierda">
+                            {{ lote.nombreItem }}
+                            <span class="etiqueta-tipo">
+                                {{ lote.esMedicamento ? 'Medicamento' : 'Insumo' }}
+                            </span>
+                            @if (lote.descripcionItem) {
+                            <small class="detalle-item">{{ lote.descripcionItem }}</small>
+                            }
+                        </td>
+                        <td class="celda_izquierda">{{ lote.codigoLote }}</td>
+                        <td class="celda_centrada">{{ lote.fechaVencimiento || '—' }}</td>
+                        <td class="celda_centrada">Q{{ lote.precioCompra | number: '1.2-2' }}</td>
+                        <td class="celda_centrada">Q{{ lote.precioVenta | number: '1.2-2' }}</td>
+                        <td class="celda_centrada">{{ lote.cantidad }}</td>
+                        <td class="celda_centrada">
+                            <div class="acciones-lote">
+                                <button
+                                    type="button"
+                                    class="iconEditar"
+                                    title="Actualizar lote"
+                                    aria-label="Actualizar el lote {{ lote.codigoLote }}"
+                                    (click)="editarLote($index)"
+                                >
+                                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="iconQuitar"
+                                    title="Eliminar lote"
+                                    aria-label="Eliminar el lote {{ lote.codigoLote }}"
+                                    (click)="eliminarLote($index)"
+                                >
+                                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="celda_centrada">
+                            Q{{ lote.cantidad * lote.precioCompra | number: '1.2-2' }}
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ==================== FORMULARIO REGISTRAR COMPRA ==================== -->
+        <section class="formulario formulario-container" aria-labelledby="tituloRegistrarCompra">
+            <h3 id="tituloRegistrarCompra" class="titulo-formulario">
+                {{ esEdicion ? 'Editar compra' : 'Registrar compra' }}
+            </h3>
+
+            <form #compraForm="ngForm" novalidate (ngSubmit)="guardarCompra(compraForm)">
+                
+                <div >
+                    <h3>Total compra <strong>Q{{ totalCompra | number: '1.2-2' }}</strong></h3>
+                    
+                </div>
+
+                <app-campo-validado label="Proveedor" fieldId="proveedorCompra" [required]="true">
+                    @if (mostrandoOtroProveedor) {
+                        <app-opcion-otro
+                            #proveedorOtro
+                            [placeholder]="'Escribe el proveedor'"
+                            [creando]="creandoProveedor"
+                            (confirmar)="crearProveedor($event)"
+                            (cancelar)="cancelarProveedor()"
+                        ></app-opcion-otro>
+                    } @else {
+                        <select
+                            id="proveedorCompra"
+                            name="proveedor"
+                            [ngModel]="proveedorSeleccionadoId"
+                            (ngModelChange)="alElegirProveedor($event)"
+                            required
+                        >
+                            <option [ngValue]="null">
+                                {{ cargandoProveedores ? 'Cargando proveedores...' : 'Seleccione un proveedor' }}
+                            </option>
+                            @for (proveedor of proveedores; track proveedor.id) {
+                                <option [ngValue]="proveedor.id">{{ proveedor.nombre }}</option>
+                            }
+                            @if (proveedorActualNoListado) {
+                                <option [ngValue]="proveedorSeleccionadoId">
+                                    {{ compraEdicion?.proveedorNombre }}
+                                </option>
+                            }
+                            <option [ngValue]="opcionOtroId">Otro</option>
+                        </select>
+                    }
+                </app-campo-validado>
+
+                <!-- ==================== COMPROBANTE ==================== -->
+                <app-campo-validado label="Comprobante" fieldId="comprobanteCompra">
+                    @if (esEdicion && comprobanteActual) {
+                        <p class="comprobante-actual">
+                            Se conservará el comprobante actual si no seleccionas otro.
+                        </p>
+                    }
+                    <div class="carga-archivo" (dragover)="$event.preventDefault()" (drop)="soltarComprobante($event)">
+                        <input
+                            #comprobanteInput
+                            type="file"
+                            id="comprobanteCompra"
+                            name="comprobante"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            (change)="seleccionarComprobante($event)"
+                        />
+                        @if (!archivoComprobante) {
+                            <label for="comprobanteCompra" class="zona-carga">
+                                <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+                                <strong>Arrastra y suelta el comprobante aquí</strong>
+                                <span>o haz clic para seleccionar</span>
+                                <span class="boton-archivo">Seleccionar archivo</span>
+                            </label>
+                        }
+
+                        @if (archivoComprobante) {
+                            <div class="archivo-seleccionado">
+                                <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                                <span>{{ archivoComprobante.name }}</span>
+                                <button
+                                    type="button"
+                                    aria-label="Quitar comprobante"
+                                    (click)="quitarComprobante(comprobanteInput)"
+                                >
+                                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </app-campo-validado>
+
+                <!-- ==================== BOTONES ==================== -->
+                <div class="botones">
+                    <button
+                        type="button"
+                        class="btn _cancelar"
+                        (click)="limpiarFormularioCompra(compraForm, comprobanteInput)"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="btn _guardar"
+                        [disabled]="compraForm.invalid || !puedeGuardar"
+                    >
+                        {{ esEdicion ? 'Guardar cambios' : 'Guardar' }}
+                    </button>
+                </div>
+            </form>
+        </section>
+        
+        </div>
+
+        
+    }
+
+    <nav class="indicador-pasos" aria-label="Progreso de la compra">
+        <button type="button" class="btn _cancelar boton-regresar" (click)="cancelar.emit()">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Ingresos
+        </button>
+
+        <ol class="pasos-compra">
+            <li>
+                <button
+                    type="button"
+                    class="paso-compra"
+                    [class.activo]="isCargandoProducto"
+                    [attr.aria-current]="isCargandoProducto ? 'step' : null"
+                    (click)="isCargandoProducto = true"
+                >
+                    <span>Paso 1</span>
+                </button>
+            </li>
+            <li>
+                <button
+                    type="button"
+                    class="paso-compra"
+                    [class.activo]="!isCargandoProducto"
+                    [class.paso-disponible]="isCargandoProducto && lotes.length > 0"
+                    [attr.aria-current]="!isCargandoProducto ? 'step' : null"
+                    [attr.aria-disabled]="lotes.length === 0 ? 'true' : null"
+                    (click)="avanzarAlPaso2()"
+                >
+                    <span>Paso 2</span>
+                </button>
+            </li>
+        </ol>
+
+        <!-- Contador de productos agregados: caja con el número encima, se incrementa al pulsar "Agregar productos" -->
+        <span
+            class="contador-productos"
+            role="status"
+            [attr.aria-label]="'Productos agregados: ' + totalProductosAgregados"
+            [attr.title]="'Productos agregados: ' + totalProductosAgregados"
+        >
+            <i class="bi bi-box-seam" aria-hidden="true"></i>
+            <span class="contador-productos__numero">{{ totalProductosAgregados }}</span>
+        </span>
+    </nav>
+  
+</div>

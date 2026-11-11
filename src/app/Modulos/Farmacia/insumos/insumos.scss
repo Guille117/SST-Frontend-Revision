@@ -1,0 +1,192 @@
+:host {
+  display: block;
+}
+
+.areaTrabajo-container {
+  width: 100%;
+}
+
+.trabajoArea {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(280px, 1.1fr);
+  gap: 32px;
+  align-items: start;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+
+  > * {
+    min-width: 0;
+  }
+}
+
+.seccionSuperior {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.buscador-container {
+  flex: 1 1 260px;
+  min-width: 0;
+  height: 45px;
+}
+
+.buscador {
+  .selector {
+    flex: 0 0 110px;
+    width: 110px;
+  }
+
+  .inputB {
+    min-width: 0;
+    width: 0;
+  }
+
+  .btnLupa {
+    flex: 0 0 40px;
+    width: 40px;
+  }
+}
+
+.miniSub-container {
+  flex: 0 1 300px;
+  max-width: 100%;
+}
+
+app-tab-switch {
+  display: block;
+}
+
+.selector:focus-visible,
+.inputB:focus-visible,
+.btnLupa:focus-visible,
+app-tab-switch:focus-visible {
+  outline: 2px solid var(--azulSecundario);
+  outline-offset: 2px;
+}
+
+.tabla-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+// texto resumido con tooltip del contenido completo
+.texto-truncado {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted rgba(148, 163, 184, 0.8);
+  cursor: help;
+  outline: none;
+
+  &::after {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    width: max-content;
+    max-width: 260px;
+    padding: 8px 10px;
+    content: attr(data-tooltip);
+    color: #fff;
+    background: #0b1739;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(11, 23, 57, 0.25);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.15s ease,
+      visibility 0.15s ease;
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.table {
+  min-width: 600px;
+}
+
+.celda-acciones {
+  width: 88px;
+  min-width: 88px;
+  height: 32px;
+}
+
+.celda-acciones .interruptor-estado {
+  margin-left: 0;
+}
+
+.acciones-insumo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.formulario-container {
+  width: 100%;
+  height: auto;
+}
+
+.botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .trabajoArea {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: 16px;
+  }
+
+  .buscador-container {
+    flex-basis: 100%;
+  }
+
+  .tabla-container > .table {
+    min-width: 640px;
+  }
+}
+
+@media (max-width: 640px) {
+  .trabajoArea {
+    gap: 20px;
+    padding: 0;
+  }
+
+  .seccionSuperior {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .buscador-container,
+  .miniSub-container {
+    flex-basis: 100%;
+    height: auto;
+  }
+
+  .botones {
+    flex-wrap: wrap;
+  }
+
+  .botones > * {
+    flex: 1 1 auto;
+  }
+}

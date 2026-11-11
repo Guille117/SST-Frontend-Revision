@@ -1,0 +1,926 @@
+import { DecimalPipe, SlicePipe } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  Input,
+  OnInit,
+  inject,
+  output,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule, NgForm } from '@angular/forms';
+import { TimeoutError, finalize, firstValueFrom, timeout } from 'rxjs';
+import { CampoValidado } from '../../../../shared/campo-validado/campo-validado';
+import { OpcionOtroComponent, OpcionOtroValor } from '../../../../shared/opcion-otro/opcion-otro';
+import { crearSeleccionesPendientes } from '../../../../shared/opcion-otro/crear-seleccion-pendiente';
+import { Paginacion } from '../../../../shared/paginacion/paginacion';
+import { PopUps } from '../../../../shared/popUps/popUpsService';
+import { TabSwitch } from '../../../../shared/tab-switch/tab-switch';
+import { Insumo } from '../../insumos/data/interfazInsumo';
+import { ServicioInsumos } from '../../insumos/data/servicio-insumos';
+import {
+  MedicamentoLogFiltros,
+  MedicamentoLogResponse,
+} from '../../medicamentos/data/interfaz-medicamento';
+import { ServicioMedicamento } from '../../medicamentos/data/servicio-medicamento';
+import { proveedorResponse } from '../../proveedores/data/proveedorInterfaz';
+import { ProveedorService } from '../../proveedores/data/proveedor-service';
+import {
+  CompraRequest,
+  detalleCompraResponse,
+  LoteCompraRequest,
+  LoteCompraVista,
+  LoteDetalleResponse,
+} from './data/interfaz-compra';
+import { ServicioCompra } from './data/servicio-compra';
+
+type FiltrosInsumo = { nombre?: string; marcaId?: number; activo?: boolean };
+
+@Component({
+  selector: 'app-agregar-compra',
+  imports: [TabSwitch, Paginacion, CampoValidado, OpcionOtroComponent, FormsModule, SlicePipe, DecimalPipe],
+  templateUrl: './agregar-compra.html',
+  styleUrl: './agregar-compra.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AgregarCompra implements OnInit {
+  // ==================== INYECCIONES ====================
+  private readonly servicioMedicamento = inject(ServicioMedicamento);
+  private readonly servicioInsumos = inject(ServicioInsumos);
+  private readonly servicioCompra = inject(ServicioCompra);
+  private readonly servicioProveedor = inject(ProveedorService);
+  private readonly popUp = inject(PopUps);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
+
+  @Input() compraEdicion: detalleCompraResponse | null = null;
+
+  cancelar = output<void>();
+  actualizado = output<void>();
+
+  isMedicamento: boolean = true;
+  isCargandoProducto: boolean = true;
+
+  // ------------ ESTADO BÚSQUEDA DE PRODUCTOS ------------
+  textoBusqueda = '';
+  medicamentos: MedicamentoLogResponse[] = [];
+  insumos: Insumo[] = [];
+  cargandoProductos = false;
+  busquedaRealizada = false;
+  productoSeleccionadoId: number | null = null;
+  paginaActual = 1;
+  readonly cantidadMostrar = 5;
+
+  get totalRegistros(): number {
+    return this.isMedicamento ? this.medicamentos.length : this.insumos.length;
+  }
+
+  // ==================== CICLO DE VIDA ====================
+  ngOnInit(): void {
+    this.listarProveedores();
+    if (this.compraEdicion) this.cargarCompraEdicion(this.compraEdicion);
+  }
+
+  get esEdicion(): boolean {
+    return this.compraEdicion !== null;
+  }
+
+  // ==================== TIPO DE PRODUCTO ====================
+  cambiarTipoProducto(esMedicamento: boolean): void {
+    if (this.hayProductoSeleccionado) return;
+    if (this.isMedicamento === esMedicamento) return;
+
+    this.isMedicamento = esMedicamento;
+    this.textoBusqueda = '';
+    this.paginaActual = 1;
+    this.productoSeleccionadoId = null;
+    this.busquedaRealizada = false;
+    this.cargandoProductos = false;
+    this.medicamentos = [];
+    this.insumos = [];
+    this.cdr.markForCheck();
+  }
+
+  // ==================== LISTAR ====================
+  listarProductos(): void {
+    this.busquedaRealizada = true;
+    this.cargandoProductos = true;
+    this.cdr.markForCheck();
+
+    if (this.isMedicamento) {
+      this.servicioMedicamento
+        .traerMedicamentoLog(true)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (medicamentos) => this.aplicarMedicamentos(medicamentos),
+          error: (err) => this.manejarErrorProductos(err, 'Error al cargar los medicamentos.'),
+        });
+      return;
+    }
+
+    this.servicioInsumos
+      .listarInsumos(true)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (insumos) => this.aplicarInsumos(insumos),
+        error: (err) => this.manejarErrorProductos(err, 'Error al cargar los insumos.'),
+      });
+  }
+
+  // ==================== LISTAR PROVEEDORES (PASO 2) ====================
+  listarProveedores(): void {
+    this.cargandoProveedores = true;
+    this.cdr.markForCheck();
+
+    this.servicioProveedor
+      .getProveedores(true)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (proveedores) => {
+          this.proveedores = proveedores;
+          this.cargandoProveedores = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.cargandoProveedores = false;
+          this.popUp.errorDesdeBackend(err, 'Error al cargar los proveedores.');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  // ==================== CREACIÓN DE PROVEEDOR ====================
+  alElegirProveedor(valor: number | null): void {
+    if (valor === this.opcionOtroId) {
+      this.proveedorAnterior = this.proveedorSeleccionadoId;
+      this.proveedorSeleccionadoId = null;
+      this.mostrandoOtroProveedor = true;
+      return;
+    }
+
+    this.proveedorSeleccionadoId = valor;
+  }
+
+  async crearProveedor(datos: OpcionOtroValor): Promise<boolean> {
+    if (this.creandoProveedor) return false;
+
+    this.creandoProveedor = true;
+    try {
+      const creado = await firstValueFrom(
+        this.servicioProveedor
+          .postProveedor({ nombre: datos.nombre })
+          .pipe(timeout(5000), takeUntilDestroyed(this.destroyRef)),
+      );
+
+      if (creado.id == null) {
+        this.popUp.error('No se pudo crear el proveedor.');
+        return false;
+      }
+
+      this.proveedores = [...this.proveedores, creado];
+      this.proveedorSeleccionadoId = creado.id;
+      this.mostrandoOtroProveedor = false;
+      return true;
+    } catch (error) {
+      this.popUp.errorDesdeBackend(error, 'No se pudo crear el proveedor.');
+      return false;
+    } finally {
+      this.creandoProveedor = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  cancelarProveedor(): void {
+    this.mostrandoOtroProveedor = false;
+    this.proveedorSeleccionadoId = this.proveedorAnterior;
+  }
+
+  private resolverProveedorPendiente(): Promise<boolean> {
+    if (!this.mostrandoOtroProveedor) return Promise.resolve(true);
+
+    return crearSeleccionesPendientes(
+      [
+        {
+          etiqueta: 'Proveedor',
+          componente: this.proveedorOtro,
+          crear: (datos) => this.crearProveedor(datos),
+        },
+      ],
+      (mensaje) => this.popUp.formIncompleto(mensaje),
+    );
+  }
+
+  // ==================== BUSCAR ====================
+  buscarProductos(): void {
+    if (this.hayProductoSeleccionado) return;
+
+    const nombre = this.textoBusqueda.trim();
+    this.busquedaRealizada = true;
+    this.paginaActual = 1;
+    this.productoSeleccionadoId = null;
+
+    if (!nombre) {
+      this.listarProductos();
+      return;
+    }
+
+    this.cargandoProductos = true;
+    this.cdr.markForCheck();
+
+    if (this.isMedicamento) {
+      const filtros: MedicamentoLogFiltros = { activo: true, nombre };
+      this.servicioMedicamento
+        .buscarMedicamentoLog(filtros)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (medicamentos) => this.aplicarMedicamentos(medicamentos),
+          error: (err) => this.manejarErrorProductos(err, 'Error al buscar los medicamentos.'),
+        });
+      return;
+    }
+
+    const filtros: FiltrosInsumo = { activo: true, nombre };
+    this.servicioInsumos
+      .buscarInsumos(filtros)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (insumos) => this.aplicarInsumos(insumos),
+        error: (err) => this.manejarErrorProductos(err, 'Error al buscar los insumos.'),
+      });
+  }
+
+  // ==================== SELECCIÓN / PAGINACIÓN ====================
+  get hayProductoSeleccionado(): boolean {
+    return this.productoSeleccionadoId !== null;
+  }
+
+  get textoAlternoPaginacion(): string {
+    if (this.hayProductoSeleccionado) return '';
+    return this.isMedicamento ? 'Seleccione un medicamento' : 'Seleccione un insumo';
+  }
+
+  seleccionarProducto(id: number): void {
+    if (this.hayProductoSeleccionado) return;
+
+    this.productoSeleccionadoId = id;
+    this.cdr.markForCheck();
+  }
+
+  deseleccionarProducto(): void {
+    this.productoSeleccionadoId = null;
+    this.cdr.markForCheck();
+  }
+
+  cambiarPagina(pagina: number): void {
+    if (this.hayProductoSeleccionado) return;
+
+    this.paginaActual = pagina;
+    this.cdr.markForCheck();
+  }
+
+  // ==================== HELPERS DE PRODUCTOS ====================
+  private aplicarMedicamentos(medicamentos: MedicamentoLogResponse[]): void {
+    this.medicamentos = medicamentos;
+    this.finalizarCarga();
+  }
+
+  private aplicarInsumos(insumos: Insumo[]): void {
+    this.insumos = insumos;
+    this.finalizarCarga();
+  }
+
+  private finalizarCarga(): void {
+    this.cargandoProductos = false;
+    this.paginaActual = Math.min(
+      this.paginaActual,
+      Math.max(1, Math.ceil(this.totalRegistros / this.cantidadMostrar)),
+    );
+    this.cdr.markForCheck();
+  }
+
+  private manejarErrorProductos(error: unknown, mensaje: string): void {
+    this.cargandoProductos = false;
+    this.popUp.errorDesdeBackend(error, mensaje);
+    this.cdr.markForCheck();
+  }
+
+  // ----------------- GUARDAR ------------------------
+
+  // ------------ ESTADO GENERAL DE LA COMPRA ------------
+  proveedorSeleccionadoId: number | null = null;
+  archivoComprobante: File | null = null;
+  comprobanteActual: string | null = null;
+  proveedores: proveedorResponse[] = [];
+  cargandoProveedores = false;
+  readonly opcionOtroId = -1;
+  mostrandoOtroProveedor = false;
+  creandoProveedor = false;
+  preparandoSelecciones = false;
+  private proveedorAnterior: number | null = null;
+  private snapshotEdicion = '';
+  private readonly proveedorOtro = viewChild<OpcionOtroComponent>('proveedorOtro');
+
+  /** Total de la compra: suma de los subtotales (cantidad × precio de compra) de todos los lotes. */
+  get totalCompra(): number {
+    return this.lotes.reduce((total, lote) => total + lote.cantidad * lote.precioCompra, 0);
+  }
+
+  /** Productos (lotes) agregados en el paso 1; alimenta el contador de la caja del indicador de pasos. */
+  get totalProductosAgregados(): number {
+    return this.lotes.length;
+  }
+
+  /** El proveedor guardado no está en la lista de activos (p. ej. quedó inactivo). */
+  get proveedorActualNoListado(): boolean {
+    return (
+      this.esEdicion &&
+      this.proveedorSeleccionadoId !== null &&
+      !this.proveedores.some((proveedor) => proveedor.id === this.proveedorSeleccionadoId)
+    );
+  }
+
+  /** Solo se permite guardar la edición cuando cambió el proveedor, los lotes o el comprobante. */
+  get hayCambios(): boolean {
+    if (!this.esEdicion) return true;
+    return this.archivoComprobante !== null || this.crearSnapshot() !== this.snapshotEdicion;
+  }
+
+  get puedeGuardar(): boolean {
+    return !this.guardando && !this.preparandoSelecciones && this.lotes.length > 0 && this.hayCambios;
+  }
+
+  private cargarCompraEdicion(compra: detalleCompraResponse): void {
+    this.proveedorSeleccionadoId = compra.proveedorId;
+    this.comprobanteActual = compra.comprobante;
+    this.lotes = compra.lotes.map((lote) => this.aLoteVista(lote));
+    this.isCargandoProducto = this.lotes.length === 0;
+    this.snapshotEdicion = this.crearSnapshot();
+    this.cdr.markForCheck();
+  }
+
+  private aLoteVista(lote: LoteDetalleResponse): LoteCompraVista {
+    const esMedicamento = lote.idMedicamentoLog !== null;
+
+    return {
+      esMedicamento,
+      idItem: (esMedicamento ? lote.idMedicamentoLog : lote.idInsumoLog) ?? 0,
+      codigoLote: lote.codigoLote,
+      cantidad: lote.cantidad,
+      fechaVencimiento: lote.fechaVencimiento,
+      precioCompra: lote.precioCompra,
+      precioVenta: lote.precioVenta,
+      nombreItem: lote.nombreMedicamento ?? lote.nombreInsumo ?? `Producto #${lote.id}`,
+      descripcionItem: '',
+      idLote: lote.id,
+      disponible: lote.disponible,
+    };
+  }
+
+  private crearSnapshot(): string {
+    return JSON.stringify({
+      proveedorId: this.proveedorSeleccionadoId,
+      lotes: this.lotes.map((lote) => this.aLoteRequest(lote)),
+    });
+  }
+
+  // ------------ VARIABLES DEL LOTE (binding bidireccional con el formulario del paso 1) ------------
+  codigoLote = '';
+  fechaVencimiento = '';
+  precioCompra: number | null = null;
+  precioVenta: number | null = null;
+  cantidad: number | null = null;
+
+  // ------------ ACUMULADO Y ESTADO DEL ENVÍO ------------
+  /** Lotes agregados en el paso 1; se listan en el paso 2 y viajan en `request.lotes`. */
+  lotes: LoteCompraVista[] = [];
+  /** Índice del lote que se está actualizando desde el paso 2; null cuando se agrega uno nuevo. */
+  indiceLoteEdicion: number | null = null;
+  private versionProductoEdicion = 0;
+  /** Verdadero mientras el servicio envía la compra (deshabilita el botón Guardar). */
+  guardando = false;
+
+  get editandoLote(): boolean {
+    return this.indiceLoteEdicion !== null;
+  }
+
+  /** Cantidad mínima editable: no puede bajar de las unidades ya entregadas del lote. */
+  get cantidadMinimaLote(): number {
+    if (this.indiceLoteEdicion === null) return 1;
+    const lote = this.lotes[this.indiceLoteEdicion];
+    if (!lote || lote.disponible === undefined) return 1;
+    return Math.max(1, lote.cantidad - lote.disponible);
+  }
+
+  /**
+   * Agrega los datos del lote al acumulado de la compra.
+   * Requiere un producto seleccionado y el formulario del paso 1 completo.
+   */
+  agregarLote(formulario: NgForm): void {
+    if (this.productoSeleccionadoId === null) {
+      this.popUp.advertencia('Seleccione un medicamento o insumo antes de agregarlo.');
+      return;
+    }
+
+    if (this.cantidad !== null && this.cantidad <= 0) {
+      this.popUp.advertencia('La cantidad debe ser mayor a 0.');
+      return;
+    }
+
+    if (this.cantidad !== null && this.cantidad < this.cantidadMinimaLote) {
+      this.popUp.advertencia(
+        `La cantidad no puede ser menor a ${this.cantidadMinimaLote}: el lote ya tiene unidades entregadas.`,
+      );
+      return;
+    }
+
+    if (formulario.invalid) {
+      this.popUp.formIncompleto('Complete los datos del lote para continuar.');
+      return;
+    }
+
+    if (
+      this.isMedicamento &&
+      this.fechaVencimiento &&
+      this.fechaVencimiento < this.fechaActual()
+    ) {
+      this.popUp.advertencia('La fecha de vencimiento no puede ser menor a la fecha actual.');
+      return;
+    }
+
+    if (
+      this.precioCompra !== null &&
+      this.precioVenta !== null &&
+      this.precioCompra > this.precioVenta
+    ) {
+      this.popUp.advertencia('El precio de compra no puede ser mayor al precio de venta.');
+      return;
+    }
+
+    const producto = this.productoSeleccionado();
+    const indiceEdicion = this.indiceLoteEdicion;
+
+    if (indiceEdicion !== null) {
+      const original = this.lotes[indiceEdicion];
+      if (!original) {
+        this.indiceLoteEdicion = null;
+        return;
+      }
+
+      const tieneEntregas =
+        original.disponible !== undefined && original.cantidad > original.disponible;
+      const cambiaProducto =
+        original.esMedicamento !== this.isMedicamento ||
+        original.idItem !== this.productoSeleccionadoId;
+      if (tieneEntregas && cambiaProducto) {
+        this.popUp.advertencia(
+          'No se puede cambiar el producto de un lote con unidades ya entregadas.',
+        );
+        return;
+      }
+
+      this.lotes[indiceEdicion] = {
+        ...original,
+        esMedicamento: this.isMedicamento,
+        idItem: this.productoSeleccionadoId,
+        codigoLote: this.codigoLote,
+        cantidad: this.cantidad!,
+        fechaVencimiento: this.fechaVencimiento,
+        precioCompra: this.precioCompra!,
+        precioVenta: this.precioVenta!,
+        nombreItem: producto?.nombre ?? original.nombreItem,
+        descripcionItem: producto
+          ? this.descripcionProducto(producto)
+          : original.descripcionItem,
+      };
+
+      this.limpiarLote(formulario);
+      this.isCargandoProducto = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.lotes.push({
+      esMedicamento: this.isMedicamento,
+      idItem: this.productoSeleccionadoId,
+      codigoLote: this.codigoLote,
+      cantidad: this.cantidad!,
+      fechaVencimiento: this.fechaVencimiento,
+      precioCompra: this.precioCompra!,
+      precioVenta: this.precioVenta!,
+      // Datos de vista: alimentan la tabla del paso 2 y no se envían al backend (ver `aLoteRequest`)
+      nombreItem: producto?.nombre ?? `Producto #${this.productoSeleccionadoId}`,
+      descripcionItem: this.descripcionProducto(producto),
+    });
+
+    // Se limpia el formulario y se permanece en el paso 1 para seguir agregando productos;
+    // el contador de la caja del indicador refleja cuántos productos se llevan agregados.
+    this.limpiarLote(formulario);
+    this.cdr.markForCheck();
+  }
+
+  /** Carga en el paso 1 los datos del lote seleccionado para actualizarlo. */
+  editarLote(index: number): void {
+    const lote = this.lotes[index];
+    if (!lote) return;
+
+    const version = ++this.versionProductoEdicion;
+    const cambiaTipo = this.isMedicamento !== lote.esMedicamento;
+    this.indiceLoteEdicion = index;
+    this.isMedicamento = lote.esMedicamento;
+    this.productoSeleccionadoId = lote.idItem;
+    this.codigoLote = lote.codigoLote;
+    this.fechaVencimiento = lote.fechaVencimiento;
+    this.precioCompra = lote.precioCompra;
+    this.precioVenta = lote.precioVenta;
+    this.cantidad = lote.cantidad;
+    this.isCargandoProducto = true;
+
+    if (cambiaTipo) {
+      this.textoBusqueda = '';
+      this.medicamentos = [];
+      this.insumos = [];
+    }
+
+    this.asegurarProductoVisible(lote, index, version);
+    this.cdr.markForCheck();
+  }
+
+  /** Hace visible y seleccionado en la tabla el producto del lote que se está editando. */
+  private asegurarProductoVisible(
+    lote: LoteCompraVista,
+    indiceEdicion: number,
+    version: number,
+  ): void {
+    const lista = lote.esMedicamento ? this.medicamentos : this.insumos;
+    const posicion = lista.findIndex((item) => item.id === lote.idItem);
+
+    this.busquedaRealizada = true;
+
+    if (posicion >= 0) {
+      this.paginaActual = Math.floor(posicion / this.cantidadMostrar) + 1;
+      return;
+    }
+
+    this.textoBusqueda = lote.nombreItem;
+    this.paginaActual = 1;
+    this.cargandoProductos = true;
+    this.cdr.markForCheck();
+
+    if (lote.esMedicamento) {
+      this.servicioMedicamento
+        .buscarMedicamentoLog({ activo: true, nombre: lote.nombreItem })
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (medicamentos) => {
+            if (!this.esEdicionProductoVigente(indiceEdicion, version)) return;
+
+            const encontrado = medicamentos.some((item) => item.id === lote.idItem);
+            this.medicamentos = encontrado
+              ? medicamentos
+              : [this.medicamentoSintetico(lote), ...medicamentos];
+            this.finalizarProductoEdicion(lote.idItem);
+          },
+          error: () => {
+            if (!this.esEdicionProductoVigente(indiceEdicion, version)) return;
+
+            this.medicamentos = [this.medicamentoSintetico(lote)];
+            this.finalizarProductoEdicion(lote.idItem);
+          },
+        });
+      return;
+    }
+
+    this.servicioInsumos
+      .buscarInsumos({ activo: true, nombre: lote.nombreItem })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (insumos) => {
+          if (!this.esEdicionProductoVigente(indiceEdicion, version)) return;
+
+          const encontrado = insumos.some((item) => item.id === lote.idItem);
+          this.insumos = encontrado ? insumos : [this.insumoSintetico(lote), ...insumos];
+          this.finalizarProductoEdicion(lote.idItem);
+        },
+        error: () => {
+          if (!this.esEdicionProductoVigente(indiceEdicion, version)) return;
+
+          this.insumos = [this.insumoSintetico(lote)];
+          this.finalizarProductoEdicion(lote.idItem);
+        },
+      });
+  }
+
+  private esEdicionProductoVigente(indiceEdicion: number, version: number): boolean {
+    return this.indiceLoteEdicion === indiceEdicion && this.versionProductoEdicion === version;
+  }
+
+  private finalizarProductoEdicion(idItem: number): void {
+    const lista = this.isMedicamento ? this.medicamentos : this.insumos;
+    const posicion = lista.findIndex((item) => item.id === idItem);
+
+    this.paginaActual = Math.floor(Math.max(0, posicion) / this.cantidadMostrar) + 1;
+    this.cargandoProductos = false;
+    this.cdr.markForCheck();
+  }
+
+  private medicamentoSintetico(lote: LoteCompraVista): MedicamentoLogResponse {
+    const [marca = '', presentacion = '', concentracion = ''] = (
+      lote.descripcionItem ?? ''
+    ).split(' · ');
+    const [dosisTexto = '0', ...unidad] = concentracion.split(' ');
+
+    return {
+      id: lote.idItem,
+      nombre: lote.nombreItem,
+      dosis: Number(dosisTexto) || 0,
+      marca,
+      presentacion,
+      viaAdministracion: '',
+      unidadMedida: unidad.join(' '),
+      estado: true,
+    };
+  }
+
+  private insumoSintetico(lote: LoteCompraVista): Insumo {
+    const [marca = '', ...detalle] = (lote.descripcionItem ?? '').split(' · ');
+
+    return {
+      id: lote.idItem,
+      nombre: lote.nombreItem,
+      marca: { idMarca: 0, nombreMarca: marca },
+      detalle: detalle.join(' · '),
+      estado: true,
+    };
+  }
+
+  /** Limpia el formulario del paso 1; si se editaba un lote, vuelve al paso 2 sin salir. */
+  cancelarPaso1(formulario: NgForm): void {
+    const estabaEditando = this.indiceLoteEdicion !== null;
+    this.limpiarLote(formulario);
+    if (estabaEditando) this.isCargandoProducto = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Limpia los campos del formulario de compra sin salir de la pantalla ni perder los productos. */
+  limpiarFormularioCompra(formulario: NgForm, comprobanteInput?: HTMLInputElement): void {
+    formulario.resetForm({ proveedor: null });
+    this.proveedorSeleccionadoId = null;
+    this.archivoComprobante = null;
+    if (comprobanteInput) comprobanteInput.value = '';
+    this.cdr.markForCheck();
+  }
+
+  /** Avanza al paso 2 solo si ya hay al menos un lote agregado (botón "Paso 2" del indicador). */
+  avanzarAlPaso2(): void {
+    if (this.lotes.length === 0) {
+      this.popUp.advertencia('Agregue al menos un producto con su lote para continuar.');
+      return;
+    }
+
+    if (this.indiceLoteEdicion !== null) {
+      this.limpiarCamposLote();
+    }
+
+    this.isCargandoProducto = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Registra o actualiza la compra: envía los lotes y el comprobante como multipart al backend. */
+  async guardarCompra(formulario: NgForm): Promise<void> {
+    // No se envía si el formulario está incompleto, ya hay un envío en curso o no hay lotes
+    if (this.guardando || this.preparandoSelecciones || formulario?.invalid || this.lotes.length === 0) {
+      return;
+    }
+    if (this.esEdicion && !this.hayCambios) return;
+
+    const edicion = this.compraEdicion;
+    const esEdicion = edicion !== null;
+
+    this.guardando = true;
+    this.cdr.markForCheck();
+
+    if (esEdicion) {
+      let confirmado = false;
+      try {
+        confirmado = await this.popUp.confirmarToast(
+          '¿Deseas guardar los cambios de esta compra?',
+        );
+      } catch (error) {
+        this.guardando = false;
+        this.cdr.markForCheck();
+        this.popUp.errorDesdeBackend(
+          error,
+          'No se pudo confirmar la operación. Intente nuevamente.',
+        );
+        return;
+      }
+
+      if (!confirmado) {
+        this.guardando = false;
+        this.cdr.markForCheck();
+        return;
+      }
+    }
+
+    this.preparandoSelecciones = true;
+    this.cdr.markForCheck();
+    let listo = false;
+    try {
+      listo = await this.resolverProveedorPendiente();
+    } finally {
+      this.preparandoSelecciones = false;
+      this.cdr.markForCheck();
+    }
+    if (!listo) {
+      this.guardando = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    if (this.proveedorSeleccionadoId === null) {
+      this.guardando = false;
+      this.cdr.markForCheck();
+      this.popUp.formIncompleto('Seleccione un proveedor antes de guardar.');
+      return;
+    }
+
+    // Cuerpo JSON de la compra: viaja en la parte `request` del multipart
+    const request: CompraRequest = {
+      proveedorId: this.proveedorSeleccionadoId,
+      lotes: this.lotes.map((lote) => this.aLoteRequest(lote)),
+    };
+
+    const solicitud = edicion
+      ? this.servicioCompra.actualizarCompra(edicion.id, {
+          request,
+          comprobante: this.archivoComprobante,
+        })
+      : this.servicioCompra.registrarCompra({
+          request,
+          comprobante: this.archivoComprobante,
+        });
+
+    solicitud
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          if (esEdicion) {
+            this.popUp.exito('Compra actualizada exitosamente.');
+            this.actualizado.emit();
+            return;
+          }
+
+          this.popUp.exito('Compra registrada exitosamente.');
+          this.limpiarCompra(formulario);
+        },
+        error: (error) => this.mostrarErrorCompra(error, esEdicion),
+      });
+  }
+
+  private mostrarErrorCompra(error: unknown, esEdicion: boolean): void {
+    if (error instanceof TimeoutError) {
+      this.popUp.error(
+        'Error de comunicación. El servidor no respondió dentro del tiempo esperado.',
+      );
+      return;
+    }
+
+    this.popUp.errorDesdeBackend(
+      error,
+      esEdicion ? 'No se pudo actualizar la compra.' : 'No se pudo registrar la compra.',
+    );
+  }
+
+  /** Limpia el estado de la compra y regresa al paso 1 para registrar otra compra. */
+  private limpiarCompra(formulario: NgForm): void {
+    formulario.resetForm({ proveedor: null });
+    this.proveedorSeleccionadoId = null;
+    this.archivoComprobante = null;
+    this.lotes = [];
+    this.textoBusqueda = '';
+    this.medicamentos = [];
+    this.insumos = [];
+    this.productoSeleccionadoId = null;
+    this.paginaActual = 1;
+    this.busquedaRealizada = false;
+    this.cargandoProductos = false;
+    this.isCargandoProducto = true;
+    this.cdr.markForCheck();
+  }
+
+  /** Vacía las variables y los controles del formulario del lote (paso 1). */
+  private limpiarLote(formulario: NgForm): void {
+    // resetForm() escribe los valores por defecto en las variables del binding; se limpian después
+    formulario.resetForm();
+    this.limpiarCamposLote();
+  }
+
+  private limpiarCamposLote(): void {
+    this.codigoLote = '';
+    this.fechaVencimiento = '';
+    this.precioCompra = null;
+    this.precioVenta = null;
+    this.cantidad = null;
+    this.indiceLoteEdicion = null;
+    this.deseleccionarProducto();
+  }
+
+  // ----------------- LISTA Y TOTAL DEL PASO 2 --------------------
+
+  /** Quita de la lista el lote indicado; si la lista queda vacía regresa al paso 1. */
+  eliminarLote(index: number): void {
+    if (index < 0 || index >= this.lotes.length) return;
+
+    const lote = this.lotes[index];
+    if (typeof lote.disponible === 'number' && lote.cantidad > lote.disponible) {
+      this.popUp.advertencia(
+        'No se puede eliminar el lote porque ya tiene unidades despachadas.',
+      );
+      return;
+    }
+
+    this.lotes.splice(index, 1);
+    if (this.lotes.length === 0) {
+      this.isCargandoProducto = true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Convierte un lote de la lista del paso 2 en el cuerpo que espera el backend. */
+  private aLoteRequest(lote: LoteCompraVista): LoteCompraRequest {
+    return {
+      esMedicamento: lote.esMedicamento,
+      idItem: lote.idItem,
+      codigoLote: lote.codigoLote,
+      cantidad: lote.cantidad,
+      fechaVencimiento: lote.fechaVencimiento,
+      precioCompra: lote.precioCompra,
+      precioVenta: lote.precioVenta,
+    };
+  }
+
+  // ----------------- HELPERS DE PRODUCTO --------------------
+
+  /** Fecha local de hoy en formato `YYYY-MM-DD`, comparable con el valor del input date. */
+  private fechaActual(): string {
+    const hoy = new Date();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${hoy.getFullYear()}-${mes}-${dia}`;
+  }
+
+  /** Producto seleccionado en la tabla del paso 1 (null si no hay selección o ya no está en la lista). */
+  private productoSeleccionado(): MedicamentoLogResponse | Insumo | null {
+    if (this.productoSeleccionadoId === null) return null;
+
+    return this.isMedicamento
+      ? (this.medicamentos.find((med) => med.id === this.productoSeleccionadoId) ?? null)
+      : (this.insumos.find((insumo) => insumo.id === this.productoSeleccionadoId) ?? null);
+  }
+
+  /** Marca, presentación y concentración del producto, para la columna Producto del paso 2. */
+  private descripcionProducto(producto: MedicamentoLogResponse | Insumo | null): string {
+    if (producto === null) return '';
+
+    return 'dosis' in producto
+      ? this.descripcionMedicamento(producto)
+      : this.descripcionInsumo(producto);
+  }
+
+  private descripcionMedicamento(medicamento: MedicamentoLogResponse): string {
+    const concentracion = `${medicamento.dosis} ${medicamento.unidadMedida}`;
+
+    return [medicamento.marca, medicamento.presentacion, concentracion]
+      .filter((parte) => !!parte)
+      .join(' · ');
+  }
+
+  private descripcionInsumo(insumo: Insumo): string {
+    return [insumo.marca?.nombreMarca, insumo.detalle].filter((parte) => !!parte).join(' · ');
+  }
+
+  // ----------------- HELPERS PARA ARCHIVOS --------------------
+  seleccionarComprobante(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.archivoComprobante = input.files?.[0] ?? null;
+  }
+
+  soltarComprobante(event: DragEvent): void {
+    event.preventDefault();
+    this.archivoComprobante = event.dataTransfer?.files[0] ?? null;
+  }
+
+  quitarComprobante(input: HTMLInputElement): void {
+    this.archivoComprobante = null;
+    input.value = '';
+  }
+}

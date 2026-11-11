@@ -1,0 +1,317 @@
+.contenedorPrincipal{
+    display: flex;
+    width: 100%;
+    margin-top: 25px;
+}
+
+.izquierda{
+    width: 60%;
+}
+
+.seccionSuperior{
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 25px;
+}
+
+.buscador-container {
+    width: 53%;
+    height: 45px;
+}
+
+.buscador {
+    background-color: #ffffff;
+
+    .inputB,
+    .btnLupa {
+        background-color: transparent;
+    }
+}
+
+.switchContainer{
+    width: 21%;
+}
+
+tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: #f1f5f9;
+    }
+
+    &.table-active td {
+        background-color: #e2e8f0;
+        font-weight: 600;
+        color: var(--azulSecundario);
+    }
+}
+
+.acciones-tabla {
+    white-space: nowrap;
+}
+
+.acciones-contenido {
+    display: inline-grid;
+    grid-template-columns: 36px 38px;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+
+    .interruptor-estado {
+        margin-left: 0;
+    }
+}
+
+.boton-icono-editar {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    place-items: center;
+    color: rgb(243, 177, 23);
+    background: var(--colorFondoPrincipal);
+    border: 1px solid var(--colorBorde);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+        color: #ffffff;
+        background: #fd9d01;
+        border-color: #fd9d01;
+        box-shadow: 0 3px 6px rgba(216, 151, 0, 0.35);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        box-shadow: none;
+        transform: translateY(0);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #fd9d01;
+        outline-offset: 2px;
+    }
+}
+
+.interruptor-estado {
+    display: inline-flex;
+    cursor: pointer;
+    vertical-align: middle;
+
+    input {
+        position: absolute;
+        opacity: 0;
+    }
+
+    span {
+        position: relative;
+        width: 38px;
+        height: 20px;
+        background: #9ca3af;
+        border-radius: 10px;
+
+        &::after {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 14px;
+            height: 14px;
+            content: '';
+            background: #ffffff;
+            border-radius: 50%;
+        }
+    }
+
+    input:checked + span {
+        background: #22c55e;
+
+        &::after {
+            transform: translateX(18px);
+        }
+    }
+}
+
+.sin-usuarios {
+    padding: 20px;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.sin-seleccion {
+    padding: 40px 20px;
+    text-align: center;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+
+.derecha{
+    width: 40%;
+    min-width: 300px;
+    padding: 16px;
+    border: 2px solid var(--colorBorde);
+    border-radius: 14px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-sizing: border-box;
+
+    .titulo {
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--colorBorde);
+
+        h3 {
+            color: var(--azulPrincipal);
+            font-size: 20px;
+            font-weight: 700;
+        }
+    }
+
+    .datosPer,
+    .datosLab {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 8px;
+
+        h2 {
+            grid-column: 1 / -1;
+            margin-bottom: 2px;
+            color: var(--azulSecundario);
+            font-size: 18px;
+            font-weight: 700;
+        }
+    }
+
+    .datosPer {
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+
+        .data-email {
+            grid-column: 1 / -1;
+        }
+    }
+
+    .datosLab {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding-top: 12px;
+        border-top: 1px solid var(--colorBorde);
+    }
+
+    .data {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+        color: #4f5155;
+        font-size: 16px;
+        line-height: 1.4;
+
+        label:first-child {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        label:last-child {
+            color: #1f2937;
+            font-weight: 500;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    .footer{
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+}
+
+/* ==================== RESPONSIVIDAD ==================== */
+@media (max-width: 900px) {
+    .contenedorPrincipal {
+        flex-direction: column;
+        gap: 20px;
+        height: auto;
+    }
+
+    .izquierda,
+    .derecha {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .seccionSuperior {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .buscador-container,
+    .switchContainer {
+        flex: 1 1 100%;
+        width: 100%;
+        height: auto;
+    }
+
+    .tabla-usuarios {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .tabla-usuarios > .table {
+        min-width: 640px;
+    }
+
+    .derecha {
+        .datosPer,
+        .datosLab {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .data {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 2px;
+        }
+    }
+}
+
+@media (max-width: 640px) {
+    .contenedorPrincipal {
+        margin-top: 14px;
+    }
+
+    .derecha {
+        padding: 12px;
+        border-radius: 12px;
+
+        .datosPer,
+        .datosLab {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .footer {
+            flex-wrap: wrap;
+        }
+
+        .footer > * {
+            flex: 1 1 auto;
+        }
+    }
+
+    .tabla-usuarios > .table {
+        min-width: 620px;
+    }
+}
+

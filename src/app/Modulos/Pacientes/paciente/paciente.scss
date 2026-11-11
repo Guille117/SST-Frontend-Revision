@@ -1,0 +1,798 @@
+.contenedorPrincipal {
+	display: grid;
+	grid-template-columns: 2fr 2fr;
+	gap: 55px;
+	width: 100%;
+	margin-top: 25px;
+}
+
+.izquierda {
+    .seccionSuperior {
+	display: flex;
+	gap: 20px;
+	justify-content: space-between;
+	align-items: baseline;
+	margin-bottom: 25px;
+    }
+
+    .buscador-container {
+        width: 50%;
+        height: 45px;
+    }
+
+    .switchContainer {
+        width: 27%;
+    }
+}
+
+/* La lista ajusta su alto a la pantalla para que el footer de paginación quede visible. */
+.tabla-pacientes {
+    max-height: calc(100vh - var(--heightTopBar) - 220px);
+    overflow-y: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+/* Las filas del listado son seleccionables: el detalle se muestra a la derecha */
+tbody tr {
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+
+	&:not(.selected-row):hover td {
+		background-color: #f1f5f9;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--azulSecundario);
+		outline-offset: -2px;
+	}
+}
+
+/* El registro seleccionado conserva el resaltado, pero sin cursiva. */
+tbody tr.selected-row,
+tbody tr.selected-row td {
+	font-style: normal;
+}
+
+.derecha {
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	min-width: 300px;
+	max-height: calc(var(--heightNavBar) - 120px);
+	padding: 0;
+	border: solid 2px var(--colorBorde);
+	border-radius: 18px;
+	background: #fff;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+	overflow: hidden;
+
+	/* La identificación del paciente queda fija; solo el contenido inferior hace scroll. */
+	.paciente {
+		position: relative;
+		z-index: 2;
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 16px 18px 14px;
+		border-bottom: 1px solid #e8eef6;
+		background: #fff;
+		border-radius: 16px 16px 0 0;
+
+		.paciente-identidad {
+			min-width: 0;
+		}
+
+		h2 {
+			margin: 0;
+			color: var(--azulPrincipal);
+			font-size: 1.5rem;
+			font-weight: 700;
+			line-height: 1.2;
+			overflow-wrap: anywhere;
+		}
+
+		.paciente-meta {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 9px;
+			margin: 4px 0 0;
+			color: #6b7280;
+			font-size: 1rem;
+
+			.separador {
+				color: #9ca3af;
+			}
+		}
+	}
+
+	.detalle-consumo {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+
+	.detalle-consumo-cabecera {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+
+		h4 {
+			margin: 0;
+			color: var(--azulSecundario);
+			font-size: 1rem;
+			font-weight: 700;
+		}
+
+		.btn {
+			margin-bottom: 0;
+		}
+	}
+
+	.bloque {
+		display: flex;
+		flex-direction: column;
+
+		h4 {
+			margin: 0 0 9px;
+			color: var(--azulSecundario);
+			font-size: 1rem;
+			font-weight: 700;
+			line-height: 1.3;
+		}
+	}
+
+	.bloque + .bloque {
+		margin-top: 20px;
+	}
+
+	/* Información del ingreso y persona responsable, una al lado de la otra con una línea divisoria */
+	.bloques-paralelos {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 18px;
+
+		/* El espacio entre bloques lo da la rejilla */
+		.bloque + .bloque {
+			margin-top: 0;
+		}
+	}
+
+	.bloques-paralelos + .bloque {
+		margin-top: 20px;
+	}
+
+	.bloque--responsable {
+		padding-left: 18px;
+		border-left: 1px solid #e2e8f0;
+	}
+
+	/* Datos en tarjetas: dos columnas por fila */
+	.ingreso-datos {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 9px;
+	}
+
+	/* La persona responsable se muestra en una sola columna */
+	.ingreso-datos--una-columna {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.dato {
+		display: grid;
+		gap: 2px;
+		min-width: 0;
+		padding: 9px 12px;
+
+		.dato-rotulo {
+			color: #6b7280;
+			font-size: 0.8rem;
+			line-height: 1.35;
+		}
+
+		.dato-valor {
+			color: var(--azulPrincipal);
+			font-size: 1rem;
+			font-weight: 700;
+			line-height: 1.35;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	/* Motivo de la visita: etiqueta y valor en la misma línea, con líneas divisorias */
+	.motivo-visita {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 16px;
+		padding: 12px 0;
+		border-top: 1px solid #e2e8f0;
+		border-bottom: 1px solid #e2e8f0;
+
+		h4 {
+			flex: 0 0 auto;
+			margin: 0;
+		}
+
+		p {
+			margin: 0;
+			color: var(--azulPrincipal);
+			font-size: 1rem;
+			font-weight: 600;
+			line-height: 1.4;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	.motivo-visita + .bloques-paralelos {
+		margin-top: 20px;
+	}
+
+	/* Catálogos clínicos del paciente: alergias y enfermedades diagnosticadas */
+	.lista-catalogo {
+		margin: 0;
+		padding-left: 18px;
+		color: var(--azulPrincipal);
+		font-size: 1rem;
+		font-weight: 600;
+		line-height: 1.4;
+
+		li + li {
+			margin-top: 4px;
+		}
+	}
+
+	.dato-vacio {
+		margin: 0;
+		color: #64748b;
+		font-size: 0.9rem;
+	}
+
+	/* Listado de documentos con una fila por documento */
+	.documentos {
+		border: 1px solid #e2e8f0;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.documentos-grupo {
+		padding: 7px 12px;
+		border-top: 1px solid #e2e8f0;
+		background: #f8fafc;
+		color: #64748b;
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+
+		&:first-child {
+			border-top: 0;
+		}
+	}
+
+	.documento {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 10px 8px 12px;
+
+		& + .documento {
+			border-top: 1px solid #eef2f7;
+		}
+
+		.documento-nombre {
+			color: var(--azulPrincipal);
+			font-size: 1rem;
+			font-weight: 700;
+			overflow-wrap: anywhere;
+		}
+
+		.documento-acciones {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+			gap: 8px;
+
+			.iconEditar:disabled {
+				opacity: 0.45;
+				cursor: not-allowed;
+			}
+
+			/* Cargar usa el verde del proyecto */
+			.iconVerde {
+				color: #22c55e;
+
+				&:hover:not(:disabled) {
+					color: #fff;
+					background: #22c55e;
+				}
+
+				&:focus-visible {
+					outline-color: #22c55e;
+				}
+			}
+
+			/* Generar usa el azul del proyecto; pulsa solo cuando hay una autorización pendiente */
+			.iconGenerar {
+				position: relative;
+				color: var(--azulSecundario);
+
+				&:hover:not(:disabled) {
+					color: #fff;
+					background: var(--azulSecundario);
+				}
+
+				&:focus-visible {
+					outline-color: var(--azulSecundario);
+				}
+
+				&.iconGenerar--pulsar {
+					i {
+						animation: pulso-color-autorizacion 1.6s ease-in-out infinite;
+					}
+
+					&:hover:not(:disabled) i {
+						animation: none;
+						color: #fff;
+					}
+
+					&::after {
+						content: '';
+						position: absolute;
+						inset: 0;
+						border-radius: 50%;
+						border: 2px solid currentColor;
+						pointer-events: none;
+						animation: pulso-autorizacion 1.6s ease-out infinite;
+					}
+				}
+			}
+		}
+	}
+
+	/* Entrada de archivo oculta: la abre el botón de cargar de cada tipo */
+	.archivo-oculto {
+		display: none;
+	}
+
+	.aviso {
+		margin: 0;
+		padding: 12px 14px;
+		border: 1px dashed #dbe4f0;
+		border-radius: 10px;
+		color: #64748b;
+		font-size: 0.9rem;
+		text-align: center;
+	}
+
+	.aviso-error {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+		padding: 12px 14px;
+		border: 1px solid #f5c2c7;
+		border-radius: 10px;
+		background: #fff5f5;
+		color: #b42318;
+
+		p {
+			margin: 0;
+			font-size: 0.9rem;
+		}
+	}
+
+	/* Botón compacto para reintentar una carga */
+	.btns {
+		padding: 6px 12px;
+		border: 1px solid #cfe0f7;
+		border-radius: 8px;
+		background: #fff;
+		color: var(--azulSecundario);
+		font-family: inherit;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background-color 0.2s ease;
+
+		&:hover {
+			background: #f2f7ff;
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--azulSecundario);
+			outline-offset: 2px;
+		}
+	}
+
+	/* Acciones generales del panel */
+	.acciones {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 10px;
+		margin-top: 18px;
+	}
+
+	.detalle-scroll {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding: 16px 18px;
+		overflow-y: auto;
+		scrollbar-gutter: stable;
+	}
+
+	.sin-seleccion {
+		margin: 16px 18px;
+		padding: 40px 20px;
+		border: 1px dashed var(--colorBorde);
+		border-radius: 14px;
+		color: #64748b;
+		font-style: italic;
+		text-align: center;
+	}
+}
+
+/* ==================== DOCUMENTACIÓN ==================== */
+/* La vista ocupa el área del listado y del detalle: secciones a la izquierda y contenido a la
+   derecha. */
+.documentacion {
+	display: grid;
+	grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+	gap: 55px;
+	box-sizing: border-box;
+	width: 100%;
+	margin-top: 25px;
+}
+
+.doc-secciones,
+.doc-contenido {
+	box-sizing: border-box;
+	border: 2px solid var(--colorBorde);
+	border-radius: 18px;
+	background: #fff;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.doc-secciones {
+	align-self: start;
+	padding: 18px;
+}
+
+.doc-secciones-cabecera {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+
+	h2 {
+		margin: 0;
+		color: var(--azulPrincipal);
+		font-size: 1.35rem;
+		font-weight: 700;
+	}
+}
+
+.doc-paciente {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 8px 0 16px;
+	overflow-wrap: anywhere;
+}
+
+.doc-paciente-nombre {
+	color: var(--azulPrincipal);
+	font-size: 1.1rem;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.doc-paciente-expediente {
+	color: #64748b;
+	font-size: 0.85rem;
+}
+
+.doc-opciones {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.doc-opcion {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 12px 14px;
+	border: 1px solid #dbe4f0;
+	border-radius: 12px;
+	background: #fff;
+	color: #334155;
+	font-family: inherit;
+	font-size: 1rem;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	transition:
+		border-color 0.2s ease,
+		background-color 0.2s ease,
+		color 0.2s ease;
+
+	i {
+		color: var(--azulSecundario);
+		font-size: 1.15rem;
+	}
+
+	&:hover,
+	&:focus-visible {
+		border-color: var(--azulSecundario);
+		background: #f2f7ff;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--azulSecundario);
+		outline-offset: 2px;
+	}
+}
+
+.doc-opcion--activa {
+	border-color: var(--azulSecundario);
+	background: #eef5ff;
+	color: var(--azulPrincipal);
+}
+
+.doc-contenido {
+	display: flex;
+	flex-direction: column;
+	min-height: calc(100vh - 260px);
+	padding: 24px;
+}
+
+.doc-contenido-cabecera {
+	h2 {
+		margin: 0;
+		color: var(--azulPrincipal);
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	p {
+		margin: 6px 0 0;
+		color: #64748b;
+		font-size: 1rem;
+	}
+}
+
+.doc-contenido-vacio {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin-top: 20px;
+	border: 1px dashed var(--colorBorde);
+	border-radius: 14px;
+	color: #94a3b8;
+	text-align: center;
+
+	i {
+		font-size: 2rem;
+	}
+
+	p {
+		margin: 0;
+		font-size: 0.95rem;
+	}
+}
+
+.doc-contenido-vacio--error {
+	border-color: #fecaca;
+	background: #fffafa;
+	color: #b42318;
+}
+
+.doc-grupo {
+	margin-top: 20px;
+}
+
+/* El botón de generar queda alineado al borde inferior derecho del panel de contenido. */
+.doc-acciones-documento {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: auto;
+	padding-top: 20px;
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 0;
+	}
+}
+
+.doc-subtitulo {
+	margin: 0 0 10px;
+	color: var(--azulPrincipal);
+	font-size: 1.15rem;
+	font-weight: 700;
+}
+
+.doc-tabla-container {
+	overflow-x: auto;
+}
+
+.doc-tabla {
+	width: 100%;
+	border: 1px solid #e4ebf5;
+	border-collapse: separate;
+	border-spacing: 0;
+	border-radius: 12px;
+	background: #fff;
+	box-shadow: none;
+	overflow: hidden;
+}
+
+.doc-tabla th,
+.doc-tabla td {
+	padding: 10px 12px;
+	border-bottom: 1px solid #eef2f8;
+	color: #334155;
+	font-size: 0.92rem;
+	font-weight: 400;
+	line-height: 1.4;
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.doc-tabla thead th {
+	background: #f8fafc;
+	color: #475569;
+	font-size: 0.88rem;
+	font-weight: 600;
+}
+
+.doc-tabla tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.doc-celda-numero {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.doc-tabla tfoot td {
+	border-top: 2px solid #e4ebf5;
+	background: #f8fafc;
+	color: var(--azulPrincipal);
+	font-weight: 700;
+}
+
+.doc-total-valor {
+	font-size: 1.05rem;
+}
+
+
+@media (max-width: 900px) {
+	.contenedorPrincipal {
+		grid-template-columns: 1fr;
+		gap: 24px;
+	}
+
+	.tabla-pacientes {
+		max-height: none;
+		overflow-x: auto;
+		overflow-y: auto;
+	}
+
+	.tabla-pacientes > .table {
+		min-width: 640px;
+	}
+
+	.documentacion {
+		grid-template-columns: 1fr;
+		gap: 24px;
+	}
+
+	.doc-contenido {
+		min-height: 320px;
+	}
+
+	.derecha {
+		min-width: 0;
+		max-height: none;
+		overflow: visible;
+
+		.detalle-scroll {
+			overflow: visible;
+		}
+	}
+}
+
+@media (max-width: 640px) {
+	.izquierda .seccionSuperior {
+		flex-wrap: wrap;
+		gap: 12px;
+	}
+
+	.izquierda .buscador-container {
+		width: 100%;
+		height: auto;
+	}
+
+	.izquierda .switchContainer {
+		width: 100%;
+	}
+
+	.contenedorPrincipal {
+		gap: 20px;
+	}
+
+	.tabla-pacientes > .table {
+		min-width: 620px;
+	}
+}
+
+@media (max-width: 620px) {
+	.derecha {
+		.bloques-paralelos {
+			grid-template-columns: 1fr;
+		}
+
+		.bloque--responsable {
+			padding-top: 20px;
+			padding-left: 0;
+			border-top: 1px solid #e2e8f0;
+			border-left: none;
+		}
+
+		.ingreso-datos {
+			grid-template-columns: 1fr;
+		}
+
+		.documento {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 6px;
+
+			.documento-acciones {
+				justify-content: flex-start;
+			}
+		}
+	}
+}
+
+/* Anillo que se expande y desvanece para avisar que hay que generar la hoja */
+@keyframes pulso-autorizacion {
+	0% {
+		transform: scale(1);
+		opacity: 0.7;
+	}
+
+	100% {
+		transform: scale(1.7);
+		opacity: 0;
+	}
+}
+
+/* Cambio de color del icono al compás de la pulsación */
+@keyframes pulso-color-autorizacion {
+	0%,
+	100% {
+		color: #0d6efd;
+	}
+
+	50% {
+		color: #60a5fa;
+	}
+}

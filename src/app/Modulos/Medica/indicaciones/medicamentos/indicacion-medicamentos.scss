@@ -1,0 +1,45 @@
+@use '../../../../shared/registros-tabla/registros-tabla';
+@use '../../panel-seccion';
+@use '../comun';
+@use '../medicamentos';
+
+/* La sección se integra en la rejilla de la pantalla: sus dos paneles ocupan las áreas del
+   formulario y del listado como si colgaran directamente de .indicaciones. */
+:host {
+  display: contents;
+}
+
+/* La etiqueta de la unidad de medida no lleva asterisco: se le fija la misma altura de línea que a
+   las que sí lo llevan para que los tres campos de la fila queden alineados */
+.indicacion-fila--cantidad .indicacion-etiqueta {
+  line-height: 1.6rem;
+}
+
+/* Las observaciones ocupan toda la fila y disponen de más alto para escribir. */
+.indicacion-campo--completo {
+  grid-column: 1 / -1;
+}
+
+.indicacion-textarea--medicamento {
+  min-height: 160px;
+}
+
+.indicacion-meta-toggle {
+  margin-left: auto;
+}
+
+.indicacion-registros {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed #e4ebf5;
+}
+
+.registro-positivo {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.registro-negativo {
+  color: #b42318;
+  font-weight: 700;
+}

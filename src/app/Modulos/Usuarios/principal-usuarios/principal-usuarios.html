@@ -1,0 +1,19 @@
+<div class="principal">
+    <nav class="subMenuNav">
+        @if (permisos.puedeLeerSubmodulo('USUARIOS')) {
+            <div class="option" routerLink="usu" routerLinkActive="active">
+                Usuarios
+            </div>
+        }
+
+        @if (permisos.puedeLeerSubmodulo('HORARIOS')) {
+            <div class="option" routerLink="horarios" routerLinkActive="active">
+                Horarios
+            </div>
+        }
+    </nav>
+
+    <div class="contenido">
+        <router-outlet></router-outlet>
+    </div>
+</div>

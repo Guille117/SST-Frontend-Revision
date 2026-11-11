@@ -1,0 +1,161 @@
+<div class="catalogo-layout">
+  <section class="panel">
+    <h3 class="panel-title">Catálogos</h3>
+    
+    @for(catalogo of listaCatalogos; track $index) {
+      <div class="catalogos" [class.selected]="catalogoSeleccionado === catalogo.titulo" (click)="seleccionarCatalogo(catalogo.titulo, catalogo.url)">
+        <div class="icono">
+          <i class="{{ catalogo.icono }}"></i>
+        </div>
+        <div class="texto">
+          <h3>{{ catalogo.titulo }}</h3>
+          <p>{{ catalogo.descripcion }}</p>
+        </div>
+        <div class="cantidad">
+          <h3>Registros</h3>
+          <h4>{{ catalogo.cantidad }}</h4>
+        </div>
+      </div>
+    }
+    
+  </section>
+
+  <section class="panel panel_tabla" #panelTabla>
+    <div class="encabezado-registros">
+      <h3 class="panel-title">{{ catalogoSeleccionado }}</h3>
+      <div class="miniSub-container">
+        <app-tab-switch
+          [op1]="'Activos'"
+          [op2]="'Inactivos'"
+          [mostrarActivos]="mostrarActivos"
+          (opcionCambiada)="traerRegistros($event)"
+        >
+        </app-tab-switch>
+      </div>
+    </div>
+
+    <table class="table tabla-registros">
+      <thead>
+        <tr>
+          <th class="celda_centrada">No.</th>
+          <th class="celda_izquierda">Nombre</th>
+          @if(catalogoSeleccionado === 'Unidad de medida'){
+            <th class="celda_izquierda">Abreviatura</th>
+          } @else if(catalogoSeleccionado === 'Motivo baja'){
+            <th class="celda_izquierda">Descripción</th>
+          }
+          <th class="celda_centrada celda-acciones">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @for(dato of datos | slice:(paginaActual - 1) * cantidadMostrar:paginaActual * cantidadMostrar; track dato.id) {
+          <tr>
+            <td class="celda_centrada">{{(paginaActual - 1) * cantidadMostrar + $index + 1}}</td>
+            <td class="celda_izquierda">{{ dato.nombre }}</td>
+            @if(catalogoSeleccionado === 'Unidad de medida'){
+              <td class="celda_izquierda">{{ dato.abreviatura }}</td>
+            } @else if(catalogoSeleccionado === 'Motivo baja'){
+              <td class="celda_izquierda">{{ dato.descripcion }}</td>
+            }
+            <td class="celda_centrada acciones celda-acciones">
+              @if(mostrarActivos){
+                <button class="iconEditar" title="Editar" aria-label="Editar" 
+                  (click)="precargar(dato.nombre, dato.id!,
+                    catalogoSeleccionado === 'Unidad de medida' ? dato.abreviatura : undefined,
+                    catalogoSeleccionado === 'Motivo baja' ? dato.descripcion : undefined)">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <label class="interruptor-estado" title="Desactivar">
+                  <input type="checkbox" checked [disabled]="cambiandoEstado || cargandoRegistros" (change)="activarDesactivar($event, dato.id!)">
+                  <span></span>
+                </label>
+              }@else {
+                <label class="interruptor-estado" title="Activar">
+                  <input type="checkbox" [disabled]="cambiandoEstado || cargandoRegistros" (change)="activarDesactivar($event, dato.id!)">
+                  <span></span>
+                </label>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr>
+          <td [attr.colspan]="catalogoSeleccionado === 'Unidad de medida' || catalogoSeleccionado === 'Motivo baja' ? 4 : 3">
+            <app-paginacion
+              [paginaActual]="paginaActual"
+              [totalregistros]="datos.length"
+              [cantidadMostrar]="cantidadMostrar"
+              (paginaCambiada)="paginaActual = $event"
+            ></app-paginacion>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+     
+  </section>
+
+  <section class="panel panel_formulario">
+    <h3 class=" titulo-formulario">Guardar registro</h3>
+
+    <div class="formulario-box">
+      <form #formularioRegistro="ngForm">
+        <label for="nombreRegistro" class="label">Nombre</label>
+        <input
+          id="nombreRegistro"
+          type="text"
+          [(ngModel)]="variableEntrada.nombre"
+          name="nombreRegistro"
+          placeholder="Ingrese nombre"
+          required
+        >
+        @if(catalogoSeleccionado === 'Unidad de medida'){
+          <label for="abreviaturaRegistro" class="label">Abreviatura</label>
+          <input
+            id="abreviaturaRegistro"
+            type="text"
+            [(ngModel)]="variableEntrada.abreviatura"
+            name="abreviaturaRegistro"
+            placeholder="Ingrese abreviatura"
+            required
+          >
+        } @else if(catalogoSeleccionado === 'Motivo baja'){
+          <label for="descripcionRegistro" class="label">Descripción</label>
+          <input
+            id="descripcionRegistro"
+            type="text"
+            [(ngModel)]="variableEntrada.descripcion"
+            name="descripcionRegistro"
+            placeholder="Ingrese descripción"
+          >
+        }
+      </form>
+
+      <div class="acciones-formulario">
+        <button type="button" class="btn _cancelar" (click)="limpiarFormulario(formularioRegistro)">
+          Cancelar
+        </button>
+        @if (editar) {
+          <button
+            type="button"
+            class="btn _guardar"
+            [disabled]="guardando || !formularioRegistro.valid || !hayCambios()"
+            (click)="editarRegistro(formularioRegistro)"
+          >
+            Guardar Cambios
+          </button>
+        }@else {
+          <button
+            type="button"
+            class="btn _guardar"
+            [disabled]="guardando || !formularioRegistro.valid"
+            (click)="guardar(formularioRegistro)"
+          >
+            Guardar
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+</div>

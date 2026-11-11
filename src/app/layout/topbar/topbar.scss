@@ -1,0 +1,165 @@
+.main{
+    background-color: var(--azulPrincipal);
+    width: 100%;
+    height: var(--heightTopBar);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+}
+
+.btn-menu {
+    display: none;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--textoNavs);
+    font-size: 1.5rem;
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #ffffff;
+        outline-offset: 2px;
+    }
+}
+
+.logo{
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 15px;
+    color: var(--textoNavs);
+}
+
+.logolg{
+    border-radius: 30px;
+    width: 50px;
+    height: 50px;
+}
+
+.usuario{
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    justify-content: center;
+    margin-left: auto;
+    color: var(--textoNavs);
+}
+
+.btn-logout {
+    background: transparent;
+    border: none;
+    color: var(--textoNavs);
+    margin-left: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    font-size: 1.7rem;
+    -webkit-text-stroke: 0.4px currentColor;
+    transition: background 0.2s ease, color 0.2s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ff5252;
+    }
+
+    &:active {
+        background: rgba(255, 82, 82, 0.2);
+        color: #ff5252;
+    }
+}
+
+h1{
+    min-width: 0;
+    overflow: hidden;
+    font-size: 28px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+h5{
+    font-weight: 500;
+    font-size: 15px;
+}
+
+/* ==================== RESPONSIVIDAD ==================== */
+@media (max-width: 900px) {
+    .main {
+        gap: 8px;
+        padding: 0 12px;
+    }
+
+    .btn-menu {
+        display: grid;
+    }
+
+    .logo {
+        gap: 10px;
+    }
+
+    .logolg {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+    }
+
+    h1 {
+        font-size: 1.05rem;
+    }
+
+    .usuario {
+        min-width: 0;
+        max-width: 34%;
+    }
+
+    .usuario h3 {
+        overflow: hidden;
+        font-size: 0.95rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .usuario h5 {
+        display: none;
+    }
+
+    .btn-logout {
+        flex: 0 0 auto;
+        margin-left: 4px;
+    }
+}
+
+@media (max-width: 640px) {
+    .main {
+        padding: 0 10px;
+    }
+
+    h1 {
+        font-size: 0.95rem;
+    }
+
+    .usuario {
+        max-width: 28%;
+    }
+}
+
+@media (max-width: 420px) {
+    .logo {
+        flex: 1 1 auto;
+    }
+
+    .usuario {
+        display: none;
+    }
+}

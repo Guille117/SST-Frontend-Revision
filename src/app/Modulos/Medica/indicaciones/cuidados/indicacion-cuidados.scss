@@ -1,0 +1,106 @@
+@use '../../../../shared/registros-tabla/registros-tabla';
+@use '../../panel-seccion';
+@use '../comun';
+
+/* La sección se integra en la rejilla de la pantalla: sus dos paneles ocupan las áreas del
+   formulario y del listado como si colgaran directamente de .indicaciones. */
+:host {
+  display: contents;
+}
+
+/* Cabecera del panel: título a la izquierda y selector Cuidados/Monitoreo a la derecha. */
+.indicacion-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.indicacion-cabecera .indicacion-titulo {
+  margin-bottom: 0;
+}
+
+.indicacion-cabecera-switch {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.indicacion-cabecera-switch app-tab-switch {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* Cada fila comparte dos filas de rejilla (etiqueta e input): los inputs de la misma fila quedan
+   alineados aunque una etiqueta ocupe dos líneas. */
+.indicacion-form .indicacion-fila {
+  grid-template-rows: auto auto;
+  row-gap: 10px;
+}
+
+/* La duración necesita menos ancho que el tipo y la fecha de inicio. */
+.indicacion-fila--vigencia {
+  grid-template-columns: minmax(0, 0.55fr) minmax(0, 0.9fr) minmax(0, 1.55fr);
+
+  .indicacion-input {
+    min-width: 0;
+  }
+}
+
+.indicacion-form .indicacion-campo {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+}
+
+/* El nombre ocupa dos columnas y la frecuencia comparte la tercera con los campos de la fila
+   siguiente, de modo que la rejilla del formulario queda alineada de arriba abajo. */
+.indicacion-campo--ancho {
+  grid-column: span 2;
+}
+
+/* Las observaciones ocupan la fila completa bajo la fecha de inicio y la duración. */
+.indicacion-campo--completo {
+  grid-column: 1 / -1;
+}
+
+.indicacion-meta-toggle {
+  margin-left: auto;
+}
+
+.indicacion-registros {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed #e4ebf5;
+}
+
+.registro-positivo {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.registro-negativo {
+  color: #b42318;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .indicacion-campo--ancho {
+    grid-column: auto;
+  }
+
+  .indicacion-fila--vigencia {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .indicacion-cabecera-switch {
+    width: 100%;
+  }
+
+  .indicacion-cabecera-switch app-tab-switch {
+    width: 100%;
+  }
+}

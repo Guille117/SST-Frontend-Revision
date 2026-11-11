@@ -1,0 +1,72 @@
+
+// area de trabajo
+.trabajoArea{
+    padding: 30px;
+    border-radius: 35px;
+    border: solid 2px var(--colorBorde);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    background-color: white;
+    display: flex;
+    gap: 55px;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+
+    > * {
+        flex: var(--ancho);
+        min-width: 0; 
+    }
+}
+
+
+
+// barra de busqueda
+
+.buscador {
+    padding: 5px;
+    background-color: rgba(244, 244, 244, 0.474);;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(154, 152, 152, 0.601);
+    border-radius: 15px;
+    width: 100%;
+    height: 100%;
+
+    .selector, .inputB, .btnLupa {
+        border: none;
+        outline: none;
+        background-color: rgba(244, 244, 244, 0.324);
+        height: 100%;
+        font-size: 16px;
+        color: #4f5155;
+    }
+
+    .selector {
+        width: 20%;
+        padding: 0 10px;
+        cursor: pointer;
+        border-right: solid 1px rgba(154, 152, 152, 0.601);
+    }
+
+    .inputB {
+        flex: 1;
+        padding: 0 14px;
+    }
+
+    .btnLupa {
+        width: 9%;
+        cursor: pointer;
+        border-left: solid 1px rgba(154, 152, 152, 0.601);
+
+        &:hover { 
+            color:var(--azulSecundario);
+            font-size: 19px;
+        }
+    }
+}
+
+/* Valor de un signo vital fuera de su rango normal: se destaca en rojo. */
+.valor-fuera-rango {
+    color: #dc2626;
+    font-weight: 700;
+}

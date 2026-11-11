@@ -1,0 +1,504 @@
+<!-- Alta médica: secciones del egreso del paciente (indicación médica, retiro voluntario y
+     referencia o traslado) y el registro del egreso, que es el mismo para las tres secciones -->
+<div
+  class="alta"
+  [class.alta--ficha-abierta]="pacienteVisible"
+  [class.alta--tratamiento-abierto]="tratamientoVisible"
+>
+  <!-- Secciones del egreso: cada tarjeta es un motivo de egreso y la pulsada queda activa -->
+  <section class="panel panel-secciones" aria-labelledby="tituloSeccionesAlta">
+    <h3 class="panel-titulo" id="tituloSeccionesAlta">Secciones</h3>
+
+    @for (seccion of secciones; track seccion.id) {
+      <button
+        type="button"
+        class="tarjeta"
+        [class.tarjeta--activa]="seccionActiva === seccion.id"
+        [attr.aria-pressed]="seccionActiva === seccion.id"
+        (click)="seleccionarSeccion(seccion.id)"
+      >
+        <span class="tarjeta_icono"><i class="bi {{ seccion.icono }}" aria-hidden="true"></i></span>
+        <span class="tarjeta_texto">
+          <span class="tarjeta_titulo">{{ seccion.titulo }}</span>
+          <span class="tarjeta_descripcion">{{ seccion.descripcion }}</span>
+        </span>
+      </button>
+    }
+  </section>
+
+  <!-- Ventana del tratamiento: reemplaza el registro del egreso mientras el médico agrega
+       medicamentos o cuidados; al guardar se queda abierta para seguir capturando -->
+  @if (mostrandoTratamiento) {
+    <div class="tratamiento-ventana">
+      @if (tipoTratamiento === 'medicamentos') {
+        <app-medicamento-indicacion
+          [mostrarTitulo]="false"
+          [medicamentoInicial]="medicamentoEnEdicion?.datos ?? null"
+          (medicamentoAgregado)="registrarMedicamento($event)"
+          (cancelado)="cancelarCapturaTratamiento()"
+        >
+          <div class="tratamiento-cabecera slot-cabecera">
+            <h3 class="tratamiento-ventana_titulo">Tratamiento</h3>
+
+            <app-tab-switch
+              op1="Medicamentos"
+              op2="Cuidados"
+              [mostrarActivos]="esTratamientoMedicamentos"
+              (opcionCambiada)="cambiarTipoTratamiento($event)"
+            ></app-tab-switch>
+          </div>
+
+          <button
+            type="button"
+            class="btn _azulsecundario slot-accion"
+            (click)="volverAlFormularioInicio()"
+          >
+            Regresar al egreso
+          </button>
+        </app-medicamento-indicacion>
+      } @else {
+        <app-cuidado-indicacion
+          [mostrarTitulo]="false"
+          [cuidadoInicial]="cuidadoEnEdicion?.datos ?? null"
+          (cuidadoAgregado)="registrarCuidado($event)"
+          (cancelado)="cancelarCapturaTratamiento()"
+        >
+          <div class="tratamiento-cabecera slot-cabecera">
+            <h3 class="tratamiento-ventana_titulo">Tratamiento</h3>
+
+            <app-tab-switch
+              op1="Medicamentos"
+              op2="Cuidados"
+              [mostrarActivos]="esTratamientoMedicamentos"
+              (opcionCambiada)="cambiarTipoTratamiento($event)"
+            ></app-tab-switch>
+          </div>
+
+          <button
+            type="button"
+            class="btn _azulsecundario slot-accion"
+            (click)="volverAlFormularioInicio()"
+          >
+            Regresar al egreso
+          </button>
+        </app-cuidado-indicacion>
+      }
+    </div>
+  } @else {
+    <!-- Registro del egreso: diagnóstico, condición y observación, con las acciones del formulario -->
+    <section class="panel panel-registro" aria-labelledby="tituloRegistroEgreso">
+      <h3 class="panel-titulo" id="tituloRegistroEgreso">Registrar egreso</h3>
+
+      @if (cargando) {
+        <p class="egreso-aviso">Cargando el alta del episodio...</p>
+      } @else if (errorCarga) {
+        <p class="egreso-aviso">No se pudo cargar el alta del episodio. Intente nuevamente.</p>
+        <div class="egreso-acciones">
+          <button type="button" class="btn _principal" (click)="cargarAlta()">
+            Reintentar
+          </button>
+        </div>
+      } @else if (sinEpisodioActivo && !altaExistente) {
+        <p class="egreso-aviso">Abra un episodio para registrar el alta.</p>
+      } @else {
+        <form class="egreso-form" (ngSubmit)="guardarEgreso()">
+        <!-- Campos del egreso: el retiro y la referencia se reparten en dos columnas -->
+        <div class="egreso-cuerpo" [class.egreso-cuerpo--dividido]="formularioDividido">
+          <div class="egreso-columna">
+            <!-- Diagnóstico de egreso -->
+            <div class="egreso-campo">
+              <label class="egreso-etiqueta" for="diagnosticoEgreso">
+                Diagnóstico de egreso<span class="egreso-obligatorio" aria-hidden="true">*</span>
+              </label>
+
+              <input
+                class="egreso-input"
+                id="diagnosticoEgreso"
+                name="diagnosticoEgreso"
+                type="text"
+                placeholder="Escribe el diagnóstico con el que egresa el paciente..."
+                aria-required="true"
+                [disabled]="soloLectura"
+                [(ngModel)]="diagnosticoEgreso"
+              />
+            </div>
+
+            <!-- Condición de egreso -->
+            <div class="egreso-campo">
+              <label class="egreso-etiqueta" for="condicionEgreso">Condición de egreso</label>
+
+              @if (mostrandoOtroCondicion) {
+                <app-opcion-otro
+                  #condicionOtro
+                  [placeholder]="'Escribe la condición de egreso'"
+                  [creando]="creandoCondicion"
+                  (confirmar)="crearCondicion($event)"
+                  (cancelar)="cancelarCondicion()"
+                ></app-opcion-otro>
+              } @else {
+                <select
+                  class="egreso-input"
+                  id="condicionEgreso"
+                  name="condicionEgreso"
+                  [disabled]="soloLectura"
+                  [ngModel]="condicionEgreso"
+                  (ngModelChange)="alElegirCondicion($event)"
+                >
+                  <option value="" disabled>Seleccione la condición de egreso</option>
+
+                  @for (condicion of condicionesEgreso; track condicion.id) {
+                    <option [value]="condicion.id">{{ condicion.nombre }}</option>
+                  }
+                  <option [value]="opcionOtroId">Otro</option>
+                </select>
+              }
+            </div>
+
+            <!-- Observación de egreso -->
+            <div class="egreso-campo">
+              <label class="egreso-etiqueta" for="observacionEgreso">Observación de egreso</label>
+
+              <textarea
+                class="egreso-input egreso-textarea"
+                id="observacionEgreso"
+                name="observacionEgreso"
+                placeholder="Indicaciones y recomendaciones para el egreso del paciente..."
+                [maxlength]="maxCaracteres"
+                [readonly]="soloLectura"
+                [(ngModel)]="observacionEgreso"
+              ></textarea>
+            </div>
+          </div>
+
+          @if (formularioDividido) {
+            <div class="egreso-columna">
+              @if (esRetiroVoluntario) {
+                <!-- Solicitante del retiro -->
+                <div class="egreso-campo">
+                  <label class="egreso-etiqueta" for="responsableRetiro">
+                    Solicitante del retiro<span class="egreso-obligatorio" aria-hidden="true">*</span>
+                  </label>
+
+                  <select
+                    class="egreso-input"
+                    id="responsableRetiro"
+                    name="responsableRetiro"
+                    aria-required="true"
+                    [disabled]="soloLectura"
+                    [(ngModel)]="responsableRetiro"
+                  >
+                    <option value="" disabled>Seleccione el solicitante</option>
+                    <option value="paciente">Paciente</option>
+                    <option value="persona-responsable">Persona responsable</option>
+                  </select>
+                </div>
+
+                <!-- Motivo del retiro -->
+                <div class="egreso-campo">
+                  <label class="egreso-etiqueta" for="motivoRetiro">
+                    Motivo del retiro<span class="egreso-obligatorio" aria-hidden="true">*</span>
+                  </label>
+
+                  <input
+                    class="egreso-input"
+                    id="motivoRetiro"
+                    name="motivoRetiro"
+                    type="text"
+                    placeholder="Ej. Decisión del paciente o de su familia"
+                    aria-required="true"
+                    [disabled]="soloLectura"
+                    [(ngModel)]="motivoRetiro"
+                  />
+                </div>
+
+                <!-- Riesgos identificados: el médico los agrega a la lista -->
+                <div class="egreso-campo">
+                  <label class="egreso-etiqueta" for="riesgoRetiro">Riesgos identificados</label>
+
+                  <div class="egreso-riesgo-agregar">
+                    <input
+                      class="egreso-input"
+                      id="riesgoRetiro"
+                      name="riesgoRetiro"
+                      type="text"
+                      placeholder="Ej. Riesgo de infección, dolor..."
+                      [disabled]="soloLectura"
+                      [(ngModel)]="riesgoRetiro"
+                      (keydown.enter)="$event.preventDefault(); agregarRiesgoRetiro()"
+                    />
+
+                    @if (!soloLectura) {
+                    <button type="button" class="btn _principal" (click)="agregarRiesgoRetiro()">
+                      Agregar
+                    </button>
+                    }
+                  </div>
+
+                  @if (riesgosRetiro.length) {
+                    <ul class="egreso-riesgos" aria-label="Riesgos del retiro voluntario">
+                      @for (riesgo of riesgosRetiro; track $index) {
+                        <li class="egreso-riesgo">
+                          <span>{{ riesgo }}</span>
+                          @if (!soloLectura) {
+                          <button
+                            type="button"
+                            [attr.aria-label]="'Quitar el riesgo ' + riesgo"
+                            (click)="quitarRiesgoRetiro($index)"
+                          >
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                          </button>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+              } @else {
+                <!-- Institución de referencia -->
+                <div class="egreso-campo">
+                  <label class="egreso-etiqueta" for="institucionReferencia">
+                    Institución de referencia<span class="egreso-obligatorio" aria-hidden="true">*</span>
+                  </label>
+
+                  @if (mostrandoOtroInstitucion) {
+                    <app-opcion-otro
+                      #institucionOtro
+                      [placeholder]="'Escribe la institución'"
+                      [creando]="creandoInstitucion"
+                      (confirmar)="crearInstitucion($event)"
+                      (cancelar)="cancelarInstitucion()"
+                    ></app-opcion-otro>
+                  } @else {
+                    <select
+                      class="egreso-input"
+                      id="institucionReferencia"
+                      name="institucionReferencia"
+                      aria-required="true"
+                      [disabled]="soloLectura"
+                      [ngModel]="institucionReferencia"
+                      (ngModelChange)="alElegirInstitucion($event)"
+                    >
+                      <option value="" disabled>Seleccione la institución</option>
+
+                      @for (institucion of instituciones; track $index) {
+                        <option [value]="institucion.id">{{ institucion.nombre }}</option>
+                      }
+                      <option [value]="opcionOtroId">Otro</option>
+                    </select>
+                  }
+                </div>
+
+                <!-- Motivo de referencia -->
+                <div class="egreso-campo">
+                  <label class="egreso-etiqueta" for="motivoReferencia">
+                    Motivo de referencia<span class="egreso-obligatorio" aria-hidden="true">*</span>
+                  </label>
+
+                  <input
+                    class="egreso-input"
+                    id="motivoReferencia"
+                    name="motivoReferencia"
+                    type="text"
+                    placeholder="Ej. Requiere valoración por especialidad"
+                    aria-required="true"
+                    [disabled]="soloLectura"
+                    [(ngModel)]="motivoReferencia"
+                  />
+                </div>
+
+                <!-- Indicaciones para traslado -->
+                <div class="egreso-campo">
+                  <label class="egreso-etiqueta" for="indicacionesTraslado">
+                    Indicaciones para traslado
+                  </label>
+
+                  <textarea
+                    class="egreso-input egreso-textarea"
+                    id="indicacionesTraslado"
+                    name="indicacionesTraslado"
+                    placeholder="Indicaciones y cuidados durante el traslado..."
+                    [readonly]="soloLectura"
+                    [(ngModel)]="indicacionesTraslado"
+                  ></textarea>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Acciones del formulario: anulación a la izquierda y acciones del registro a la derecha -->
+        @if (puedeEditarAlta || (puedeAnularAlta && puedeAnularAltaDe(altaExistente?.usuarioId))) {
+        <div class="acciones-formulario egreso-acciones">
+          @if (puedeAnularAlta && puedeAnularAltaDe(altaExistente?.usuarioId)) {
+            <div class="egreso-acciones-grupo egreso-acciones-grupo--izquierda">
+              <button
+                type="button"
+                class="btn _eliminar"
+                [disabled]="guardando || anulando"
+                (click)="anularAlta()"
+              >
+                Anular alta
+              </button>
+            </div>
+          }
+
+          @if (puedeEditarAlta) {
+          <div class="egreso-acciones-grupo">
+            <button
+              type="button"
+              class="btn _cancelar"
+              [disabled]="guardando || anulando"
+              (click)="cancelarCaptura()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              class="btn _principal"
+              [disabled]="guardando || anulando || confirmando"
+              (click)="agregarTratamiento()"
+            >
+              Agregar tratamiento
+            </button>
+
+            <button type="submit" class="btn _guardar" [disabled]="!puedeGuardar">Guardar</button>
+          </div>
+          }
+        </div>
+        }
+        </form>
+      }
+    </section>
+  }
+
+  <!-- Tratamiento agregado: sustituye a la ficha del paciente en el borde derecho; primero los
+       medicamentos y después los cuidados -->
+  @if (tratamientoVisible) {
+    <aside class="tratamiento-panel" aria-labelledby="tituloTratamientoAgregado">
+      <h3 class="tratamiento-panel_titulo" id="tituloTratamientoAgregado">
+        Tratamiento
+      </h3>
+
+      @if (tratamientoMedicamentos.length) {
+        <section class="tratamiento-grupo" aria-labelledby="tituloMedicamentosTratamiento">
+          <h4 class="tratamiento-grupo_titulo" id="tituloMedicamentosTratamiento">
+            Medicamentos
+          </h4>
+
+          @for (medicamento of tratamientoMedicamentos; track $index) {
+            <article class="tratamiento-card">
+              <header class="tratamiento-card_encabezado">
+                <span class="tratamiento-card_nombre-grupo">
+                  <span class="tratamiento-card_nombre">{{ medicamento.nombre }}</span>
+                  @if (medicamento.medicamentoLibre) {
+                    <span class="tratamiento-card_no-registrado">Medicamento no registrado</span>
+                  }
+                </span>
+
+                @if (puedeEditarAlta) {
+                <span class="tratamiento-card_acciones">
+                  <button
+                    type="button"
+                    class="tratamiento-card_accion tratamiento-card_accion--editar"
+                    title="Editar medicamento"
+                    [attr.aria-label]="'Editar ' + medicamento.nombre"
+                    (click)="editarMedicamento($index)"
+                  >
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="tratamiento-card_accion tratamiento-card_accion--eliminar"
+                    title="Eliminar medicamento"
+                    [attr.aria-label]="'Eliminar ' + medicamento.nombre"
+                    (click)="quitarMedicamento($index)"
+                  >
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                  </button>
+                </span>
+                }
+              </header>
+
+              <ul class="tratamiento-card_detalle">
+                @if (medicamento.cantidad) {
+                  <li>
+                    {{ medicamento.cantidad
+                    }}{{ medicamento.unidadMedida ? ' ' + medicamento.unidadMedida : '' }}
+                  </li>
+                }
+                @if (medicamento.frecuencia) {
+                  <li>Cada {{ medicamento.frecuencia }} horas</li>
+                }
+                @if (medicamento.duracionTipo) {
+                  <li>{{ duracionDelMedicamento(medicamento) }}</li>
+                }
+              </ul>
+
+              @if (medicamento.observaciones) {
+                <p class="tratamiento-card_observaciones">{{ medicamento.observaciones }}</p>
+              }
+            </article>
+          }
+        </section>
+      }
+
+      @if (tratamientoCuidados.length) {
+        <section class="tratamiento-grupo" aria-labelledby="tituloCuidadosTratamiento">
+          <h4 class="tratamiento-grupo_titulo" id="tituloCuidadosTratamiento">
+            Cuidados
+          </h4>
+
+          @for (cuidado of tratamientoCuidados; track $index) {
+            <article class="tratamiento-card">
+              <header class="tratamiento-card_encabezado">
+                <span class="tratamiento-card_nombre">{{ cuidado.nombre }}</span>
+
+                @if (puedeEditarAlta) {
+                <span class="tratamiento-card_acciones">
+                  <button
+                    type="button"
+                    class="tratamiento-card_accion tratamiento-card_accion--editar"
+                    title="Editar cuidado"
+                    [attr.aria-label]="'Editar ' + cuidado.nombre"
+                    (click)="editarCuidado($index)"
+                  >
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="tratamiento-card_accion tratamiento-card_accion--eliminar"
+                    title="Eliminar cuidado"
+                    [attr.aria-label]="'Eliminar ' + cuidado.nombre"
+                    (click)="quitarCuidado($index)"
+                  >
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                  </button>
+                </span>
+                }
+              </header>
+
+              <ul class="tratamiento-card_detalle">
+                <li>{{ textoCuidado(cuidado) }}</li>
+              </ul>
+
+              @if (cuidado.observaciones) {
+                <p class="tratamiento-card_observaciones">{{ cuidado.observaciones }}</p>
+              }
+            </article>
+          }
+        </section>
+      }
+    </aside>
+  }
+
+  <!-- Datos del paciente: bloque compartido con las demás pantallas del módulo. Se abre y se cierra
+       con su pestaña lateral y se alterna con las tarjetas del tratamiento. -->
+  <app-datos-paciente
+    [plegable]="true"
+    [abierto]="pacienteVisible"
+    (abiertoCambia)="cambiarPanelPaciente($event)"
+  ></app-datos-paciente>
+</div>

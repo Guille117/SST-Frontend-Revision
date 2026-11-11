@@ -1,0 +1,29 @@
+<div class="main">
+    <button
+        type="button"
+        class="btn-menu"
+        (click)="alternarMenu()"
+        [attr.aria-expanded]="layout.menuAbierto()"
+        aria-controls="menuLateral"
+        aria-label="Abrir menú de navegación"
+        title="Menú"
+    >
+        <i class="bi bi-list" aria-hidden="true"></i>
+    </button>
+
+    <div class="logo">
+        <img class="logolg" src="logo.jpeg" alt="Logo">
+        <h1>{{ tituloModulo() }}</h1>
+    </div>
+    <div class="usuario">
+        <h3>
+            {{ nombreCorto() }}
+        </h3>
+        <h5>
+            {{ authService.currentUser()?.roles?.join(', ') || 'Usuario' }}
+        </h5>
+    </div>
+    <button type="button" class="btn-logout" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <i class="bi bi-power" aria-hidden="true"></i>
+    </button>
+</div>

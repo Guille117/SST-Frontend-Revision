@@ -1,0 +1,250 @@
+<!-- Evaluación clínica: secciones del episodio (historia clínica, examen físico y diagnóstico) -->
+<div
+  class="evaluacion"
+  [class.evaluacion--ficha-abierta]="pacienteAbierto"
+  [class.evaluacion--datos-paciente]="seccionConDatosPaciente"
+  [class.evaluacion--sin-hallazgos]="!mostrarHallazgos"
+>
+  <!-- Datos del paciente: bloque compartido con las demás pantallas del módulo, pegado al borde
+       derecho de la pantalla. En el examen físico y en diagnóstico lo abre y lo cierra la pestaña
+       lateral y en historia clínica, que siempre muestra los datos, se dibuja desplegado y sin
+       pestaña. -->
+  <app-datos-paciente
+    [plegable]="!seccionConDatosPaciente"
+    [abierto]="fichaAbierta"
+    (abiertoCambia)="cambiarFicha($event)"
+  ></app-datos-paciente>
+
+  <!-- Secciones de la evaluación -->
+  <section class="panel panel-secciones" [class.panel-secciones--rail]="pacienteAbierto">
+    <h3 class="panel-titulo" [class.visualmente-oculto]="pacienteAbierto">Secciones</h3>
+
+    @for (seccion of secciones; track seccion.id) {
+      <button
+        type="button"
+        class="tarjeta"
+        [class.tarjeta--activa]="seccionActiva === seccion.id"
+        [attr.aria-pressed]="seccionActiva === seccion.id"
+        [attr.title]="pacienteAbierto ? seccion.titulo : null"
+        [attr.aria-label]="pacienteAbierto ? seccion.titulo : null"
+        (click)="seleccionarSeccion(seccion.id)"
+      >
+        <span class="tarjeta_icono"><i class="bi {{ seccion.icono }}" aria-hidden="true"></i></span>
+        <span class="tarjeta_texto">
+          <span class="tarjeta_titulo">{{ seccion.titulo }}</span>
+          <span class="tarjeta_descripcion">{{ seccion.descripcion }}</span>
+        </span>
+      </button>
+    }
+  </section>
+
+  <!-- Contenido de la sección activa: cada tarjeta del panel de secciones muestra su panel -->
+  @switch (seccionActiva) {
+    @case ('historia-clinica') {
+      <app-historia-clinica class="panel-seccion" />
+    }
+
+    @case ('diagnostico') {
+      <app-diagnostico class="panel-seccion" />
+    }
+
+    @default {
+      <!-- Examen físico -->
+      <section class="panel panel-seccion">
+        <h3 class="panel-titulo examen-titulo">Examen físico</h3>
+        <p class="examen-ayuda">
+          @if (partesCuerpo.length) {
+            Seleccione la parte del cuerpo para registrar los hallazgos.
+          } @else {
+            No hay partes del cuerpo disponibles para registrar hallazgos.
+          }
+        </p>
+
+        @if (!soloLectura) {
+          <!-- Parte del cuerpo evaluada: una sola lista desplegable con las regiones del catálogo -->
+          <div class="parte-cuerpo-campo">
+            <label class="parte-cuerpo-label" for="parteCuerpoExamen">Parte del cuerpo</label>
+
+            @if (mostrandoOtroParte) {
+              <app-opcion-otro
+                #parteOtro
+                [placeholder]="'Escribe la parte del cuerpo'"
+                [creando]="creandoParte"
+                (confirmar)="crearParte($event)"
+                (cancelar)="cancelarParte()"
+              ></app-opcion-otro>
+            } @else {
+              <select
+                id="parteCuerpoExamen"
+                name="parteCuerpoExamen"
+                class="parte-cuerpo-select"
+                [disabled]="cargando || guardando || eliminando"
+                [ngModel]="parteSeleccionadaId"
+                (ngModelChange)="alElegirParte($event)"
+              >
+                @for (parte of partesCuerpo; track parte.id) {
+                  <option [ngValue]="parte.id">{{ parte.nombre }}</option>
+                }
+                @if (!partesCuerpo.length) {
+                  <option [ngValue]="null">Sin partes del cuerpo disponibles</option>
+                }
+                <option [ngValue]="opcionOtroId">Otro</option>
+              </select>
+            }
+          </div>
+
+          <!-- Captura de hallazgos: el cuadro arranca vacío y se llena solo al editar una tarjeta -->
+          <form class="hallazgo-form" (ngSubmit)="guardarHallazgo()">
+            <label class="hallazgo-label" for="hallazgoActual">Hallazgos</label>
+
+            <textarea
+              id="hallazgoActual"
+              name="hallazgoActual"
+              class="hallazgo-campo"
+              [(ngModel)]="hallazgoActual"
+              [readonly]="cargando || guardando || eliminando"
+              [attr.aria-readonly]="cargando || guardando || eliminando"
+              [maxlength]="maxCaracteres"
+              placeholder="Describe los hallazgos encontrados en la parte del cuerpo seleccionada..."
+            ></textarea>
+
+            <span class="contador-caracteres">{{ hallazgoActual.length }}/{{ maxCaracteres }}</span>
+
+            <!-- Acciones del cuadro: "Guardar" se habilita solo cuando hay un cambio que registrar -->
+            <div class="acciones-formulario hallazgo-acciones">
+              <button
+                type="button"
+                class="btn _cancelar"
+                [disabled]="cargando || guardando || eliminando"
+                (click)="cancelarCaptura()"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn _guardar" [disabled]="!puedeGuardar">Guardar</button>
+            </div>
+          </form>
+        }
+      </section>
+    }
+  }
+
+  <!-- Hallazgos registrados: solo el examen físico los registra -->
+  @if (mostrarHallazgos) {
+    <section class="panel panel-hallazgos">
+      <h3 class="panel-titulo">Hallazgos registrados</h3>
+
+      <div class="hallazgos-lista">
+        @for (hallazgo of hallazgos; track hallazgo.id) {
+        <article
+          class="hallazgo-card"
+          [class.hallazgo-card--menu-abierto]="menuHallazgoAbierto === hallazgo.id"
+          [class.hallazgo-card--edicion]="hallazgoEnEdicion?.id === hallazgo.id"
+          [attr.data-hallazgo-id]="hallazgo.id"
+        >
+          <header class="hallazgo-encabezado">
+            <span class="hallazgo-nombre">{{ hallazgo.parteCuerpo }}</span>
+
+            <!-- Menú de opciones de la tarjeta: editar o eliminar el hallazgo -->
+            @if (puedeGestionar(hallazgo.usuarioId)) {
+              <button
+                type="button"
+                class="hallazgo-menu-trigger"
+                title="Más opciones"
+                aria-haspopup="menu"
+                [attr.aria-label]="'Más opciones para el hallazgo de ' + hallazgo.parteCuerpo"
+                [attr.aria-expanded]="menuHallazgoAbierto === hallazgo.id"
+                (click)="alternarMenuHallazgo(hallazgo.id)"
+              >
+                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+              </button>
+            }
+          </header>
+
+          <p class="hallazgo-descripcion">{{ hallazgo.descripcion }}</p>
+
+          <footer class="hallazgo-meta">
+            <span><i class="bi bi-calendar3" aria-hidden="true"></i>{{ hallazgo.fecha }}</span>
+            <span><i class="bi bi-clock" aria-hidden="true"></i>{{ hallazgo.hora }}</span>
+            <span><i class="bi bi-person" aria-hidden="true"></i>{{ hallazgo.usuario }}</span>
+          </footer>
+
+          <!-- Menú de opciones: se dibuja al final de la tarjeta y flota sobre ella -->
+          @if (menuHallazgoAbierto === hallazgo.id && puedeGestionar(hallazgo.usuarioId)) {
+            <div
+              class="hallazgo-menu"
+              role="menu"
+              [attr.aria-label]="'Opciones para el hallazgo de ' + hallazgo.parteCuerpo"
+            >
+              <div class="hallazgo-menu-opcion">
+                <span>Editar</span>
+                <button
+                  type="button"
+                  class="iconEditar"
+                  role="menuitem"
+                  title="Editar hallazgo"
+                  [attr.aria-label]="'Editar el hallazgo de ' + hallazgo.parteCuerpo"
+                  (click)="editarHallazgo(hallazgo)"
+                >
+                  <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <div class="hallazgo-menu-opcion">
+                <span>Eliminar</span>
+                <button
+                  type="button"
+                  class="iconQuitar"
+                  role="menuitem"
+                  title="Eliminar hallazgo"
+                  [attr.aria-label]="'Eliminar el hallazgo de ' + hallazgo.parteCuerpo"
+                  (click)="eliminarHallazgo(hallazgo)"
+                >
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </article>
+      }
+
+      <!-- Estado de carga -->
+      @if (cargando) {
+        <div
+          class="hallazgo-card hallazgo-card--cargando"
+          role="status"
+          aria-label="Cargando hallazgos registrados"
+        >
+          <div class="skeleton-encabezado">
+            <div class="skeleton-lineas">
+              <span class="skeleton-linea"></span>
+              <span class="skeleton-linea skeleton-linea--media"></span>
+            </div>
+          </div>
+
+          <span class="skeleton-linea"></span>
+
+          <div class="skeleton-meta">
+            <span class="skeleton-meta-item">
+              <i class="bi bi-calendar3" aria-hidden="true"></i>
+              <span class="skeleton-linea"></span>
+            </span>
+            <span class="skeleton-meta-item">
+              <i class="bi bi-clock" aria-hidden="true"></i>
+              <span class="skeleton-linea"></span>
+            </span>
+            <span class="skeleton-meta-item">
+              <i class="bi bi-person" aria-hidden="true"></i>
+              <span class="skeleton-linea"></span>
+            </span>
+          </div>
+        </div>
+      }
+
+        <!-- Estado vacío -->
+        @if (!cargando && hallazgos.length === 0) {
+          <p class="hallazgos-vacio">Aún no hay hallazgos registrados para el paciente.</p>
+        }
+      </div>
+    </section>
+  }
+</div>

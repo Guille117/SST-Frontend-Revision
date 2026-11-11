@@ -1,0 +1,418 @@
+<!-- Atención médica: pantalla con la que se abre el módulo Médico. A la izquierda, los pacientes en
+     atención con su buscador, filtros y orden; a la derecha, la información del paciente seleccionado,
+     que por defecto es el primero del listado. -->
+<div class="atencion">
+  <!-- Columna izquierda: pacientes en atención -->
+  <section class="panel panel-pacientes" aria-labelledby="tituloPacientesAtencion">
+    <header class="panel-encabezado">
+      <h2 class="panel-titulo" id="tituloPacientesAtencion">Pacientes en atención</h2>
+
+      <div class="buscador">
+        <button type="button" class="btnLupa" aria-label="Buscar" title="Buscar">
+          <i class="bi bi-search" aria-hidden="true"></i>
+        </button>
+        <input
+          class="inputB"
+          type="search"
+          placeholder="Buscar por nombre o expediente..."
+          aria-label="Buscar paciente en atención"
+          [(ngModel)]="textoBusqueda"
+          (ngModelChange)="asegurarSeleccion()"
+        />
+      </div>
+    </header>
+
+    <!-- Filtro por tipo de atención y orden del listado en la misma fila: a la izquierda los botones de
+         filtro y a la derecha el orden -->
+    <div class="pacientes-barra">
+      <div class="pacientes-filtros" role="group" aria-label="Filtrar por tipo de atención">
+        <button
+          type="button"
+          class="chip"
+          [class.activo]="filtroActivo === 'todos'"
+          [attr.aria-pressed]="filtroActivo === 'todos'"
+          (click)="cambiarFiltro('todos')"
+        >
+          Todos
+        </button>
+        <button
+          type="button"
+          class="chip"
+          [class.activo]="filtroActivo === 'emergencia'"
+          [attr.aria-pressed]="filtroActivo === 'emergencia'"
+          (click)="cambiarFiltro('emergencia')"
+        >
+          Emergencia
+        </button>
+        <button
+          type="button"
+          class="chip"
+          [class.activo]="filtroActivo === 'hospitalizacion'"
+          [attr.aria-pressed]="filtroActivo === 'hospitalizacion'"
+          (click)="cambiarFiltro('hospitalizacion')"
+        >
+          Hospitalización
+        </button>
+        @if (mostrarAltas) {
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtroActivo === 'altasRecientes'"
+            [attr.aria-pressed]="filtroActivo === 'altasRecientes'"
+            (click)="cambiarFiltro('altasRecientes')"
+          >
+            Altas recientes
+          </button>
+        }
+      </div>
+
+      <div class="pacientes-orden">
+        <label class="orden-etiqueta" for="ordenPacientes">Ordenar por:</label>
+        <select class="orden-select" id="ordenPacientes" name="ordenPacientes" [(ngModel)]="orden">
+          <option value="reciente">Ingreso más reciente</option>
+          <option value="nombre">Nombre (A-Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Listado de pacientes: mientras carga, si falla la carga o si no hay coincidencias -->
+    <div class="pacientes-lista">
+      @if (filtroActivo === 'altasRecientes' && cargandoAltas) {
+        <p class="lista-aviso">Cargando altas recientes...</p>
+      } @else if (filtroActivo === 'altasRecientes' && errorAltas) {
+        <div class="lista-aviso lista-aviso--error" role="alert">
+          <p>No se pudieron cargar las altas recientes.</p>
+          <button type="button" class="btn _cancelar" (click)="cargarAltasRecientes()">
+            Reintentar
+          </button>
+        </div>
+      } @else if (cargando) {
+        <p class="lista-aviso">Cargando pacientes...</p>
+      } @else if (errorCarga) {
+        <div class="lista-aviso lista-aviso--error" role="alert">
+          <p>No se pudieron cargar los pacientes en atención.</p>
+          <button type="button" class="btn _cancelar" (click)="listarPacientes()">
+            Reintentar
+          </button>
+        </div>
+      } @else if (pacientesFiltrados.length === 0) {
+        <p class="lista-aviso">{{ mensajeListaVacio }}</p>
+      } @else {
+        @for (paciente of pacientesFiltrados; track paciente.expediente) {
+          <article
+            [class]="claseCard(paciente)"
+            role="button"
+            tabindex="0"
+            [attr.aria-pressed]="esSeleccionado(paciente)"
+            (click)="seleccionarPaciente(paciente)"
+            (keydown.enter)="seleccionarPaciente(paciente)"
+          >
+            @if (paciente.estadoClinicoNombre) {
+              <span class="paciente-estado-clinico">{{ paciente.estadoClinicoNombre }}</span>
+            }
+            <div class="paciente-datos">
+              <h3 class="paciente-nombre">{{ paciente.nombre }}</h3>
+
+              <p class="paciente-meta">
+                <span>{{ paciente.expediente }}</span>
+                <span class="paciente-separador" aria-hidden="true">|</span>
+                <span>{{ paciente.edad ?? '—' }} años</span>
+                <span class="paciente-separador" aria-hidden="true">|</span>
+                <span>{{ paciente.sexo }}</span>
+              </p>
+            </div>
+
+            <!-- El diagnóstico principal va primero; si el paciente no lo tiene, no se muestra -->
+            @if (paciente.diagnostico) {
+              <div class="paciente-diagnostico">
+                <span class="diagnostico-rotulo">{{
+                  paciente.esAlta ? 'Diagnóstico de egreso' : 'Diagnóstico principal'
+                }}</span>
+                <span
+                  class="diagnostico-valor"
+                  [attr.title]="textoTooltip(paciente.diagnostico, 'No registrado')"
+                >
+                  {{ paciente.diagnostico }}
+                </span>
+              </div>
+            }
+
+            <div class="paciente-etiquetas">
+              <span class="paciente-tipo">{{ etiquetasTipo[paciente.tipoAtencion] }}</span>
+              <!-- Solo la hospitalización tiene cama; la emergencia no muestra destino -->
+              @if (esHospitalizacion(paciente)) {
+                <span class="paciente-ubicacion">Cama {{ paciente.ubicacion }}</span>
+              }
+            </div>
+          </article>
+        }
+      }
+    </div>
+  </section>
+
+  <!-- Columna derecha: detalle del paciente seleccionado con la estética del módulo Pacientes -->
+  <aside class="panel panel-seleccionado" aria-label="Información del paciente seleccionado">
+    @if (pacienteSeleccionado; as paciente) {
+      <div class="paciente">
+        <div class="paciente-identidad">
+          <h2>{{ paciente.nombre }}</h2>
+
+          <p class="paciente-meta">
+            <span>{{ paciente.expediente }}</span>
+            @if (detallePaciente; as datos) {
+              <span class="separador" aria-hidden="true">|</span>
+              <span>{{ datos.edad ?? '—' }} años</span>
+              <span class="separador" aria-hidden="true">|</span>
+              <span>{{ sexoLegible(datos.sexo) }}</span>
+            } @else {
+              <span class="separador" aria-hidden="true">|</span>
+              <span>{{ paciente.edad ?? '—' }} años</span>
+              <span class="separador" aria-hidden="true">|</span>
+              <span>{{ paciente.sexo }}</span>
+            }
+
+            @if (telefonoPaciente(detallePaciente, paciente); as telefono) {
+              <span class="separador" aria-hidden="true">|</span>
+              <span>{{ telefono }}</span>
+            }
+          </p>
+        </div>
+
+        @if (detallePaciente; as datos) {
+          <span class="estado" [class.estado--inactivo]="!datos.estado">
+            {{ datos.estado ? 'Activo' : 'Inactivo' }}
+          </span>
+        }
+      </div>
+
+      <!-- Información del egreso: viene del resumen del alta y se conserva aunque falle el detalle -->
+      @if (paciente.esAlta && paciente.egreso; as egreso) {
+        <section class="bloque bloque-egreso">
+          <h4>Información del egreso</h4>
+
+          <div class="ingreso-datos">
+            <div class="dato">
+              <span class="dato-rotulo">Tipo de alta</span>
+              <span class="dato-valor">{{ etiquetasTipoAlta[egreso.tipoAlta] }}</span>
+            </div>
+            <div class="dato">
+              <span class="dato-rotulo">Tipo de atención</span>
+              <span class="dato-valor">{{ etiquetasTipo[paciente.tipoAtencion] }}</span>
+            </div>
+            <div class="dato">
+              <span class="dato-rotulo">Fecha de egreso</span>
+              <span class="dato-valor">{{ egreso.fecha }}</span>
+            </div>
+            <div class="dato">
+              <span class="dato-rotulo">Hora de egreso</span>
+              <span class="dato-valor">{{ egreso.hora }}</span>
+            </div>
+            <div class="dato">
+              <span class="dato-rotulo">Condición de egreso</span>
+              <span class="dato-valor">{{ egreso.condicion }}</span>
+            </div>
+          </div>
+        </section>
+
+        @if (paciente.diagnostico) {
+          <section class="bloque motivo-visita">
+            <h4>Diagnóstico de egreso</h4>
+            <p [attr.title]="textoTooltip(paciente.diagnostico, 'No registrado')">
+              {{ paciente.diagnostico }}
+            </p>
+          </section>
+        }
+
+        <section class="bloque motivo-visita">
+          <h4>Observación de egreso</h4>
+          <p [attr.title]="textoTooltip(egreso.observacion, 'Sin observaciones')">
+            {{ egreso.observacion || 'Sin observaciones' }}
+          </p>
+        </section>
+      }
+
+      @if (cargandoDetalle) {
+        <p class="aviso">Cargando detalle del paciente...</p>
+      } @else if (errorDetalle) {
+        <div class="aviso-error" role="alert">
+          <p>{{ errorDetalle }}</p>
+          <button type="button" class="btns" (click)="recargarDetalle()">Reintentar</button>
+        </div>
+      } @else if (detallePaciente; as datos) {
+        <div class="bloques-paralelos bloques-paralelos--atencion">
+          <section class="bloque bloque-atencion">
+            <h4>Información de la atención</h4>
+
+            <div class="ingreso-datos">
+              <div class="dato">
+                <span class="dato-rotulo">Tipo de atención</span>
+                <span class="dato-valor">{{ tipoAtencionLegible(datos.tipoAtencion) }}</span>
+              </div>
+              <div class="dato">
+                <span class="dato-rotulo">Fecha y hora de ingreso</span>
+                <span class="dato-valor">{{ fechaHoraLegible(datos.fechaHoraIngreso) }}</span>
+              </div>
+              <div class="dato">
+                <span class="dato-rotulo">Médico asignado</span>
+                <span class="dato-valor">{{ datos.medicoNombre || '—' }}</span>
+              </div>
+              @if (datos.tipoAtencion === 'HOSPITALIZACION' && datos.camaCodigo) {
+                <div class="dato">
+                  <span class="dato-rotulo">Cama</span>
+                  <span class="dato-valor">{{ datos.camaCodigo }}</span>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="bloque bloque--responsable">
+            <h4>Persona responsable</h4>
+
+            <div class="ingreso-datos ingreso-datos--una-columna">
+              <div class="dato">
+                <span class="dato-rotulo">Nombre</span>
+                <span class="dato-valor">{{ responsableNombre(datos) }}</span>
+              </div>
+              <div class="dato">
+                <span class="dato-rotulo">Teléfono</span>
+                <span class="dato-valor">{{ responsableTelefono(datos) }}</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        @if (!paciente.esAlta && datos.descripcion) {
+          <section class="bloque motivo-visita">
+            <h4>Motivo de la visita</h4>
+            <p [attr.title]="textoTooltip(datos.descripcion, 'No registrado')">
+              {{ datos.descripcion }}
+            </p>
+          </section>
+        }
+
+        <div class="bloques-paralelos">
+          <section class="bloque bloque-alergias">
+            <h4>Alergias</h4>
+
+            @if (datos.alergias.length === 0) {
+              <p class="dato-vacio">Ninguna registrada</p>
+            } @else {
+              <ul class="lista-catalogo">
+                @for (alergia of datos.alergias; track alergia.id) {
+                  <li>{{ alergia.nombre }}</li>
+                }
+              </ul>
+            }
+          </section>
+
+          <section class="bloque bloque-enfermedades bloque--responsable">
+            <h4>Enfermedades diagnosticadas</h4>
+
+            @if (datos.enfermedades.length === 0) {
+              <p class="dato-vacio">Ninguna registrada</p>
+            } @else {
+              <ul class="lista-catalogo">
+                @for (enfermedad of datos.enfermedades; track enfermedad.id) {
+                  <li>{{ enfermedad.nombre }}</li>
+                }
+              </ul>
+            }
+          </section>
+        </div>
+
+        @if (!paciente.esAlta) {
+          <section class="bloque bloque-signos">
+            <h4>Últimos signos vitales</h4>
+
+            @if (cargandoSignos) {
+              <p class="aviso">Cargando signos vitales...</p>
+            } @else if (errorSignos) {
+              <div class="aviso-error" role="alert">
+                <p>{{ errorSignos }}</p>
+                <button type="button" class="btns" (click)="recargarSignos()">Reintentar</button>
+              </div>
+            } @else if (ultimoSignoVital; as signo) {
+              <div class="ingreso-datos signos-datos">
+                <div class="dato">
+                  <span class="dato-rotulo">PA (mmHg)</span>
+                  <span class="dato-valor">
+                    <span [class.valor-fuera-rango]="fueraDeRango('sistolica', signo.sistolica)">{{
+                      signo.sistolica
+                    }}</span>/<span [class.valor-fuera-rango]="fueraDeRango('diastolica', signo.diastolica)">{{
+                      signo.diastolica
+                    }}</span>
+                  </span>
+                </div>
+                <div class="dato">
+                  <span class="dato-rotulo">FC (lpm)</span>
+                  <span
+                    class="dato-valor"
+                    [class.valor-fuera-rango]="
+                      fueraDeRango('frecuenciaCardiaca', signo.frecuenciaCardiaca)
+                    "
+                    >{{ signo.frecuenciaCardiaca }}</span
+                  >
+                </div>
+                <div class="dato">
+                  <span class="dato-rotulo">FR (rpm)</span>
+                  <span
+                    class="dato-valor"
+                    [class.valor-fuera-rango]="
+                      fueraDeRango('frecuenciaRespiratoria', signo.frecuenciaRespiratoria)
+                    "
+                    >{{ signo.frecuenciaRespiratoria }}</span
+                  >
+                </div>
+                <div class="dato">
+                  <span class="dato-rotulo">Temp. (°C)</span>
+                  <span
+                    class="dato-valor"
+                    [class.valor-fuera-rango]="fueraDeRango('temperatura', signo.temperatura)"
+                    >{{ signo.temperatura }}</span
+                  >
+                </div>
+                <div class="dato">
+                  <span class="dato-rotulo">SpO₂ (%)</span>
+                  <span
+                    class="dato-valor"
+                    [class.valor-fuera-rango]="fueraDeRango('saturacion', signo.saturacion)"
+                    >{{ signo.saturacion }}</span
+                  >
+                </div>
+                <div class="dato">
+                  <span class="dato-rotulo">Última toma</span>
+                  <span class="dato-valor">{{ fechaHoraLegible(signo.fecha) }}</span>
+                </div>
+              </div>
+            } @else {
+              <p class="dato-vacio">Sin registros de signos vitales.</p>
+            }
+          </section>
+        }
+      }
+
+      <div class="acciones">
+        @if (mostrarExpediente) {
+          <button type="button" class="btn _principal" (click)="abrirExpediente()">
+            Abrir expediente
+          </button>
+        }
+        @if (paciente.episodioId === null) {
+          @if (mostrarUltimoEpisodio) {
+            <button type="button" class="btn _guardar" (click)="abrirUltimoEpisodio()">
+              Abrir último episodio
+            </button>
+          }
+        } @else {
+          <button type="button" class="btn _guardar" (click)="abrirEpisodio()">
+            Abrir episodio actual
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="sin-seleccion">
+        Seleccione un paciente del listado para ver su información y abrir su episodio.
+      </p>
+    }
+  </aside>
+</div>

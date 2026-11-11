@@ -1,0 +1,80 @@
+<div class="modal-content">
+    <!-- Product Type Selector -->
+    <div class="miniSub-container campo-formulario" [ngClass]="{'w-medicamento': isMedicamento, 'w-insumo': !isMedicamento}">
+      <label class="form-label">Tipo de producto</label>
+      <app-tab-switch
+        [op1]="'Medicamentos'"
+        [op2]="'Insumos'"
+        [mostrarActivos]="isMedicamento"
+        (opcionCambiada)="isMedicamento = $event"
+      ></app-tab-switch>
+    </div>
+
+    
+    <div class="form-row">
+      <div class="campo-formulario campo-nombre">
+        <label for="genericName">Nombre genérico</label>
+        <input
+          type="text"
+          id="genericName"
+          [placeholder]="isMedicamento ? 'Ej. Paracetamol' : 'Ej. Guantes quirúrgicos talla M'"
+          [(ngModel)]="productForm.genericName"
+        />
+      </div>
+      @if(isMedicamento){
+        <div class="campo-formulario campo-dosis">
+          <label for="dose">Dosis</label>
+          <input
+            type="text"
+            id="dose"
+            placeholder="Ej. 500mg"
+            [(ngModel)]="productForm.dose"
+          />
+        </div>
+  
+        <div class="campo-formulario campo-unidad">
+          <label for="administrationRoute">Unidad</label>
+          <select  id="administrationRoute" [(ngModel)]="productForm.administrationRoute" class="desplegable">
+            <option value="">Seleccionar</option>
+            <option *ngFor="let route of administrationRoutes" [value]="route">
+              {{ route }}
+            </option>
+          </select>
+        </div>
+      }
+    </div>
+
+    <div class="campo-formulario campo-nombre">
+      <label for="marcaCommercial">Marca comercial</label>
+      <input
+        type="text"
+        id="marcaCommercial"
+        class="form-input"
+        placeholder="Ej. Laboratorios MK"
+        [(ngModel)]="productForm.commercialBrand"
+      />
+    </div>
+
+     @if(isMedicamento){
+       <div class="form-row">
+         <div class="campo-formulario campo-via">
+           <label for="administrationRoute">Vía de administración</label>
+           <select  id="administrationRoute" [(ngModel)]="productForm.administrationRoute" class="desplegable">
+             <option value="">Seleccionar</option>
+             <option *ngFor="let route of administrationRoutes" [value]="route">
+               {{ route }}
+             </option>
+           </select>
+         </div>
+         <div class="campo-formulario campo-presentacion">
+           <label for="presentation">Presentación</label>
+           <select id="presentation" [(ngModel)]="productForm.presentation" class="desplegable">
+             <option value="">Seleccionar</option>
+             <option *ngFor="let pres of presentations" [value]="pres">
+               {{ pres }}
+             </option>
+           </select>
+         </div>
+       </div>
+     }
+</div>

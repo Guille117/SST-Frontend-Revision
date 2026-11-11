@@ -1,0 +1,100 @@
+
+@use "styles/tableStyle";
+@use "styles/subMenuStyle.scss";
+@use "styles/formularioStyle.scss";
+@use "styles/botonesStyle.scss";
+@use "styles/otrosStyle.scss";
+@use "styles/popUpStyle.scss";
+@use "styles/forumulario2Style.scss";
+@use "styles/tarjetaStyle.scss";
+@use "styles/medicaStyle.scss";
+@use "styles/responsive";
+
+@layer theme, base, components, utilities;
+
+/* 3. Cargamos la configuración y las utilidades, SIN el preflight */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "bootstrap-icons/font/bootstrap-icons.css";
+@import "@fortawesome/fontawesome-free/css/all.css";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--colorFondoPrincipal);
+}
+
+/* Los controles de formulario no heredan la tipografía del body por defecto. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+
+// variables
+:root{
+  --azulPrincipal: #0B1739;
+    --textoNavs: white;
+  --azulSecundario: #0D6EFD;
+    --heightTopBar: 9vh;
+    --heightNavBar: calc(100vh - var(--heightTopBar));
+    --widthNavBar: 4vw;
+    --colorBorde: #CBD5E1;
+    --colorFondoPrincipal: #F5F5F4;
+}
+
+.swal-actions-custom {
+  gap: 0.6rem;
+}
+
+.swal-btn-confirm,
+.swal-btn-cancel {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  font-size: 0.98rem;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.swal-btn-confirm {
+  background: #16a34a;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.28);
+}
+
+.swal-btn-confirm:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.swal-btn-cancel {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.swal-btn-cancel:hover {
+  background: #d1d5db;
+  transform: translateY(-1px);
+}
+
+/* El visor a pantalla completa bloquea el desplazamiento de la página de fondo. */
+html.visor-abierto,
+html.visor-abierto body {
+  overflow: hidden;
+}

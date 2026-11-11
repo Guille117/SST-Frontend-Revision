@@ -1,0 +1,503 @@
+:host {
+  display: block;
+}
+
+.areaTrabajo-container {
+    width: 100%;
+    padding-bottom: 100px;
+}
+
+.trabajoArea {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.trabajoArea2{
+    display: grid;
+	grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
+	gap: 1rem;
+	align-items: stretch;
+}
+
+.seccionSuperior {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.buscador-container {
+  flex: 1 1 260px;
+  min-width: 0;
+  height: 45px;
+}
+
+.buscador {
+  .selector {
+    flex: 0 0 110px;
+    width: 110px;
+  }
+
+  .inputB {
+    min-width: 0;
+    width: 0;
+  }
+
+  .btnLupa {
+    flex: 0 0 40px;
+    width: 40px;
+  }
+}
+
+.miniSub-container {
+  flex: 0 1 300px;
+  max-width: 100%;
+}
+
+app-tab-switch {
+  display: block;
+}
+
+.celda-acciones {
+  width: 88px;
+  min-width: 88px;
+}
+
+.iconQuitar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  color: #ed1a0f;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(26, 37, 53, 0.12);
+  font-size: 15px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    color: #fff;
+    background: #ed1a0f;
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ed1a0f;
+    outline-offset: 2px;
+  }
+}
+
+.acciones-lote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.acciones-lote .iconEditar {
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+}
+
+/* Registros no seleccionados mientras hay una selección activa */
+tr.fila-bloqueada {
+  pointer-events: none;
+}
+
+.table tbody tr.selected-row,
+.table tbody tr.selected-row td {
+  font-style: normal;
+}
+
+tr.fila-bloqueada td {
+  background: #f1f2f4 !important;
+  color: #9aa1ab;
+  cursor: not-allowed;
+}
+
+.paginacion-bloqueada.bloqueada {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.fila{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    & > * {
+        flex: 0 0 calc(50% - 10px);
+        max-width: calc(50% - 10px);
+    }
+}
+
+.botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.indicador-pasos {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: var(--widthNavBar);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  margin: 0;
+  padding: 1rem 0 2rem;
+  background: var(--colorFondoPrincipal);
+}
+
+.paso2{
+    display: grid;
+	grid-template-columns: minmax(0, 1.65fr) minmax(0, 0.6fr);
+	gap: 1rem;
+	align-items: stretch;
+}
+
+.pasos-compra {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  width: min(100%, 280px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &::before {
+    position: absolute;
+    top: 50%;
+    right: 42%;
+    left: 42%;
+    height: 2px;
+    background: #b9c5d4;
+    content: '';
+    transform: translateY(-50%);
+  }
+}
+
+.paso-compra {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 112px;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 4px 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 999px;
+  background: #f8f9fb;
+  color: #7d8795;
+  font-size: 0.875rem;
+  font-family: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:last-child {
+    justify-self: end;
+  }
+
+  &.activo {
+    border-color: #1674c8;
+    background: #1674c8;
+    color: #fff;
+  }
+}
+
+/* Pulso tenue para indicar que el paso 2 ya está disponible */
+.paso-compra.paso-disponible {
+  animation: pasoDisponible 2.2s ease-in-out infinite;
+}
+
+@keyframes pasoDisponible {
+  0%,
+  100% {
+    border-color: #d8dee8;
+    background-color: #f8f9fb;
+    color: #7d8795;
+    box-shadow: 0 0 0 0 rgba(22, 116, 200, 0);
+    transform: scale(1);
+  }
+
+  50% {
+    border-color: #1674c8;
+    background-color: #d7e9ff;
+    color: #0d5fae;
+    box-shadow: 0 0 0 6px rgba(22, 116, 200, 0.14);
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paso-compra.paso-disponible {
+    animation: none;
+    border-color: #1674c8;
+    background-color: #d7e9ff;
+    color: #0d5fae;
+  }
+}
+
+/* Contador de productos agregados: caja con el número encima, al lado de los pasos */
+.contador-productos {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: 1.5rem;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #f8f9fb;
+  color: #1674c8;
+  font-size: 1.1rem;
+}
+
+.contador-productos__numero {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #1674c8;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Botón para volver a la pantalla principal de ingresos, junto al paso 1 */
+.boton-regresar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 1.5rem;
+  margin-bottom: 0;
+}
+
+.numero-paso {
+  display: grid;
+  flex: 0 0 22px;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c5c9ce;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.paso-compra.activo .numero-paso {
+  background: #fff;
+  color: #1674c8;
+}
+
+/* ==================== FORMULARIO REGISTRAR COMPRA ==================== */
+.carga-archivo {
+  position: relative;
+
+  input[type='file'] {
+    display: none;
+  }
+
+  .zona-carga {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 104px;
+    padding: 14px;
+    border: 2px dashed #b9d5ff;
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: #1d2d50;
+    text-align: center;
+    cursor: pointer;
+
+    &:hover {
+      border-color: #0d6efd;
+    }
+
+    i {
+      color: #0d6efd;
+      font-size: 28px;
+    }
+
+    strong {
+      font-size: 13px;
+    }
+
+    span {
+      color: #667085;
+      font-size: 12px;
+    }
+
+    .boton-archivo {
+      margin-top: 4px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      background-color: #0d6efd;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  }
+
+  .archivo-seleccionado {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #344054;
+    font-size: 13px;
+
+    > i {
+      color: #e5484d;
+      font-size: 22px;
+    }
+
+    span {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    button {
+      padding: 4px;
+      border: 0;
+      background: transparent;
+      color: #667085;
+      cursor: pointer;
+    }
+  }
+}
+
+/* ==================== TABLA DE PRODUCTOS AGREGADOS (PASO 2) ==================== */
+.etiqueta-tipo {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e8f1fd;
+  color: #1674c8;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.detalle-item {
+  display: block;
+  color: #667085;
+  font-size: 11px;
+}
+
+.comprobante-actual {
+  margin: 0 0 8px;
+  color: #5f6a85;
+  font-size: 12px;
+}
+
+.tabla-container,
+.table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 1100px) {
+  .trabajoArea2,
+  .paso2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .tabla-container > .table,
+  .table-container > .table {
+    min-width: 700px;
+  }
+
+  .indicador-pasos {
+    left: 0;
+    padding: 0.75rem 0 calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 640px) {
+  .areaTrabajo-container {
+    padding-bottom: 130px;
+  }
+
+  .fila > * {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  .seccionSuperior {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .buscador-container,
+  .miniSub-container {
+    flex-basis: 100%;
+    height: auto;
+  }
+
+  .botones {
+    flex-wrap: wrap;
+  }
+
+  .botones > * {
+    flex: 1 1 auto;
+  }
+
+  .pasos-compra {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .paso-compra {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    padding: 4px 8px;
+  }
+
+  .boton-regresar {
+    margin-right: 0.5rem;
+  }
+
+  .contador-productos {
+    margin-left: 0.75rem;
+  }
+}

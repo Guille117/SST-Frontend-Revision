@@ -1,0 +1,158 @@
+<div class="login-wrapper">
+  <div class="login-header">
+    <div class="logo-container">
+      <img src="logo.jpeg" alt="Logo Sanatorio Santa Teresita" class="login-logo" />
+    </div>
+    <h1 class="login-title">Sanatorio Santa Teresita</h1>
+    <div class="accent-divider">
+      <span class="accent-dot"></span>
+    </div>
+    <p class="login-subtitle">Sistema de Evaluación y Evolución de Pacientes</p>
+  </div>
+
+  <div class="login-card">
+    @if (errorMessage) {
+      <div class="login-error-banner" role="alert">
+        {{ errorMessage }}
+      </div>
+    }
+
+    <form (ngSubmit)="onSubmit()" class="login-form">
+      <div class="field-group">
+        <label for="username">Usuario</label>
+        <div class="input-container">
+          <i class="bi bi-person input-icon-left"></i>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            placeholder="Username"
+            [(ngModel)]="username"
+            autocomplete="username"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label for="password">Contraseña</label>
+        <div class="input-container">
+          <i class="bi bi-lock input-icon-left"></i>
+          <input
+            id="password"
+            name="password"
+            [type]="showPassword ? 'text' : 'password'"
+            placeholder="•••••"
+            [(ngModel)]="password"
+            autocomplete="current-password"
+            required
+            [minlength]="showCredentialRecovery ? passwordMinLength : null"
+            [class.input-password-error]="showCredentialRecovery && password.length > 0 && password.length < passwordMinLength"
+          />
+          <button
+            type="button"
+            class="toggle-password-btn"
+            (click)="toggleShowPassword()"
+            title="Mostrar / ocultar contraseña"
+          >
+            <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword"></i>
+          </button>
+        </div>
+      </div>
+
+      @if (showCredentialRecovery) {
+        <div class="field-group credential-confirmation">
+          <label for="confirmPassword">Confirmar contraseña</label>
+          <div class="input-container">
+            <i class="bi bi-shield-check input-icon-left"></i>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              [type]="showConfirmPassword ? 'text' : 'password'"
+              placeholder="Repite tu contraseña"
+              [(ngModel)]="confirmPassword"
+              autocomplete="new-password"
+              [class.input-password-error]="confirmPassword && password !== confirmPassword"
+            />
+            <button
+              type="button"
+              class="toggle-password-btn"
+              (click)="toggleShowConfirmPassword()"
+              title="Mostrar / ocultar confirmación"
+            >
+              <i class="bi" [class.bi-eye]="!showConfirmPassword" [class.bi-eye-slash]="showConfirmPassword"></i>
+            </button>
+          </div>
+          @if (showCredentialRecovery && password && password.length < passwordMinLength) {
+            <p class="password-requirement" role="alert">
+              La contraseña debe tener al menos {{ passwordMinLength }} caracteres.
+            </p>
+          }
+        </div>
+      }
+
+      <button type="submit" class="btn-login" [disabled]="loading">
+        @if (loading) {
+          <span>Iniciando sesión...</span>
+        } @else if (showCredentialRecovery) {
+          Guardar cambios
+        } @else {
+          Iniciar sesión
+        }
+      </button>
+    </form>
+
+    <button type="button" class="btn-credentials" (click)="toggleCredentialRecovery()">
+      {{ showCredentialRecovery ? 'Volver al inicio de sesión' : '¿Primer ingreso o necesitas recuperar el acceso?' }}
+    </button>
+  </div>
+</div>
+
+@if (mostrarModalPin) {
+  <div class="pin-modal-backdrop" role="presentation">
+    <section class="pin-modal" role="dialog" aria-modal="true" aria-labelledby="pin-title">
+      <button type="button" class="pin-modal-close" (click)="cerrarModalPin()" aria-label="Cerrar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+
+      <div class="pin-modal-icon">
+        <i class="bi bi-shield-lock"></i>
+      </div>
+      <h2 id="pin-title">Verifica tu solicitud</h2>
+      <p class="pin-modal-help">
+        Ingresa el PIN de 6 dígitos generado por el administrador. Si no lo tienes, comunícate con él.
+      </p>
+
+      <label for="pinAdministrador">PIN de administrador</label>
+      <input
+        id="pinAdministrador"
+        name="pinAdministrador"
+        class="pin-input"
+        type="text"
+        inputmode="numeric"
+        maxlength="6"
+        autocomplete="one-time-code"
+        placeholder="000000"
+        [(ngModel)]="pinAdministrador"
+        [disabled]="intentosPin >= 3"
+      />
+
+      @if (mensajePin) {
+        <p class="pin-message" [class.pin-message-error]="intentosPin > 0 && intentosPin >= 3">
+          {{ mensajePin }}
+        </p>
+      }
+
+      <div class="pin-modal-actions">
+        <button type="button" class="btn-pin-cancel" (click)="cerrarModalPin()">Cancelar</button>
+        <button type="button" class="btn-pin-confirm" [disabled]="intentosPin >= 3 || loading" (click)="validarPin()">
+          @if (loading) {
+            Validando...
+          } @else {
+            Validar PIN
+          }
+        </button>
+      </div>
+    </section>
+  </div>
+}

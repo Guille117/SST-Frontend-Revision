@@ -1,0 +1,576 @@
+<!-- Medicamentos: registro y listado de la sección de indicaciones médicas -->
+<section
+  class="panel panel-seccion panel-seccion--scroll"
+  aria-labelledby="tituloMedicamentos"
+>
+  <h3 class="panel-titulo indicacion-titulo" id="tituloMedicamentos">Medicamentos</h3>
+
+  @if (!soloLectura) {
+  <form class="indicacion-form" (ngSubmit)="agregarIndicacion()">
+    <!-- Medicamento elegido: ocupa el lugar del buscador y de la tabla de resultados -->
+    @if (hayMedicamentoSeleccionado) {
+      <div class="indicacion-campo">
+        <span class="indicacion-etiqueta" id="etiquetaMedicamento">
+          Medicamento<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+        </span>
+
+        <div class="medicamento-elegido" role="group" aria-labelledby="etiquetaMedicamento">
+          <span class="medicamento-elegido-texto">{{ textoMedicamentoElegido }}</span>
+
+          <button
+            type="button"
+            class="medicamento-elegido-cambiar"
+            title="Cambiar medicamento"
+            aria-label="Cambiar el medicamento indicado"
+            (click)="cambiarMedicamento()"
+          >
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Medicamento: búsqueda en el catálogo mientras no se haya elegido ninguno -->
+    @if (!hayMedicamentoSeleccionado) {
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="medicamentoIndicado">
+          Medicamento<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+        </label>
+
+        <div class="indicacion-buscador">
+          <div class="buscador">
+            <input
+              class="inputB"
+              id="medicamentoIndicado"
+              name="medicamento"
+              type="text"
+              placeholder="Buscar medicamento..."
+              maxlength="1000"
+              aria-required="true"
+              [(ngModel)]="medicamento"
+              (keydown.enter)="$event.preventDefault(); buscarMedicamento()"
+            />
+
+            <button
+              class="btnLupa"
+              type="button"
+              title="Buscar en el catálogo de medicamentos"
+              aria-label="Buscar en el catálogo de medicamentos"
+              [disabled]="cargandoCatalogo"
+              (click)="buscarMedicamento()"
+            >
+              <i class="bi bi-search fs-5" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultados de la búsqueda: tabla paginada con el número, la descripción y la
+           concentración del medicamento, su existencia y su vía de administración;
+           cada fila elige el medicamento -->
+      @if (busquedaMedicamentoRealizada) {
+        <div class="indicacion-resultados" aria-live="polite">
+          @if (cargandoCatalogo) {
+            <p class="indicacion-vacio">Buscando medicamentos en el catálogo...</p>
+          } @else if (medicamentosEncontrados.length) {
+            <div class="tabla-container">
+              <table aria-label="Medicamentos encontrados en el catálogo">
+                <thead>
+                  <tr>
+                    <th class="columna-numero" scope="col">No.</th>
+                    <th scope="col">Descripción</th>
+                    <th scope="col">Concentración</th>
+                    <th scope="col">Existencia</th>
+                    <th scope="col">Administración</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  @for (
+                    opcion of medicamentosDeLaPagina;
+                    track opcion.id;
+                    let indice = $index
+                  ) {
+                    <tr
+                      class="fila-seleccionable"
+                      tabindex="0"
+                      [title]="'Usar «' + descripcionMedicamento(opcion) + '» en la indicación'"
+                      (click)="seleccionarMedicamento(opcion)"
+                      (keyup.enter)="seleccionarMedicamento(opcion)"
+                    >
+                      <td class="celda_centrada">{{ numeroInicialDeLaPagina + indice }}</td>
+                      <td class="celda_izquierda">{{ descripcionMedicamento(opcion) }}</td>
+                      <td class="celda_centrada">
+                        {{ concentracionMedicamento(opcion) || '---' }}
+                      </td>
+                      <td
+                        class="celda_centrada"
+                        [class.sin-existencia]="opcion.disponible <= 0"
+                      >
+                        {{ opcion.disponible > 0 ? opcion.disponible : 'Sin existencia' }}
+                      </td>
+                      <td class="celda_izquierda">{{ opcion.viaAdministracion }}</td>
+                    </tr>
+                  }
+                </tbody>
+
+                <!-- Pie de la tabla: los medicamentos se reparten de cinco en cinco y el
+                     recuento de la paginación alterna con la ayuda para elegir -->
+                <tfoot>
+                  <tr>
+                    <td colspan="5">
+                      <app-paginacion
+                        [paginaActual]="paginaMedicamentos"
+                        [totalregistros]="medicamentosEncontrados.length"
+                        [cantidadMostrar]="medicamentosPorPagina"
+                        [textoAlterno]="'Seleccione un medicamento'"
+                        (paginaCambiada)="seleccionarPaginaMedicamentos($event)"
+                      ></app-paginacion>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          } @else {
+            <p class="indicacion-vacio">{{ mensajeSinMedicamentosEncontrados }}</p>
+          }
+        </div>
+      }
+
+      <!-- Medicamento no registrado: solo aparece después de realizar una búsqueda -->
+      @if (busquedaMedicamentoRealizada) {
+        <div class="medicamento-libre">
+          <span>¿No está registrado?</span>
+          <button
+            type="button"
+            class="btn _principal"
+            [disabled]="!hayMedicamento"
+            (click)="usarMedicamentoLibre()"
+          >
+            Indicar como no registrado
+          </button>
+        </div>
+      }
+    }
+
+    <!-- Resto de la captura: espera al medicamento elegido, porque con la tabla de resultados
+         desplegada el formulario solo muestra el buscador y sus resultados -->
+    @if (!busquedaMedicamentoRealizada) {
+      <!-- Fecha de inicio y frecuencia -->
+      <div class="indicacion-fila indicacion-fila--dos">
+        <div class="indicacion-campo">
+          <label class="indicacion-etiqueta" for="fechaInicioIndicada">
+            Fecha y hora de inicio<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+          </label>
+          <input
+            class="indicacion-input"
+            id="fechaInicioIndicada"
+            name="fechaInicio"
+            type="datetime-local"
+            aria-required="true"
+            [(ngModel)]="fechaInicio"
+          />
+        </div>
+
+        <div class="indicacion-campo">
+          <label class="indicacion-etiqueta" for="frecuenciaIndicada">
+            Frecuencia (horas)<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+          </label>
+          <input
+            class="indicacion-input"
+            id="frecuenciaIndicada"
+            name="frecuencia"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            placeholder="Ej. 8"
+            aria-required="true"
+            [(ngModel)]="frecuencia"
+          />
+        </div>
+      </div>
+
+      <!-- Cantidad y unidad de medida -->
+      <div class="indicacion-fila indicacion-fila--dos">
+        <div class="indicacion-campo">
+          <label class="indicacion-etiqueta" for="cantidadIndicada">
+            Cantidad<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+          </label>
+          <input
+            class="indicacion-input"
+            id="cantidadIndicada"
+            name="cantidad"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            placeholder="Ej. 2"
+            aria-required="true"
+            [(ngModel)]="cantidad"
+          />
+        </div>
+
+        <div class="indicacion-campo">
+          <label class="indicacion-etiqueta" for="unidadMedidaIndicada">Unidad de medida</label>
+          @if (mostrandoOtroUnidad) {
+            <app-opcion-otro
+              #unidadOtro
+              [placeholder]="'Escribe la unidad'"
+              [requiereAbreviatura]="true"
+              [creando]="creandoUnidad"
+              (confirmar)="crearUnidad($event)"
+              (cancelar)="cancelarUnidad()"
+            ></app-opcion-otro>
+          } @else {
+            <select
+              class="indicacion-input"
+              id="unidadMedidaIndicada"
+              name="unidadMedida"
+              [ngModel]="unidadMedida"
+              (ngModelChange)="alElegirUnidad($event)"
+            >
+              <option value="">Seleccionar...</option>
+              @for (unidad of unidadesMedida; track unidad) {
+                <option [value]="unidad">{{ unidad }}</option>
+              }
+              <option [value]="opcionOtroId">Otro</option>
+            </select>
+          }
+        </div>
+      </div>
+
+      <!-- Duración y tipo de duración -->
+      <div class="indicacion-fila indicacion-fila--dos">
+        <div class="indicacion-campo">
+          <label class="indicacion-etiqueta" for="duracionCantidadIndicada">
+            Duración
+            @if (duracionTipo === 'dias') {
+              <span class="indicacion-obligatorio" aria-hidden="true">*</span>
+            }
+          </label>
+          <input
+            class="indicacion-input"
+            id="duracionCantidadIndicada"
+            name="duracionCantidad"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            placeholder="Ej. 7"
+            [attr.aria-required]="duracionTipo === 'dias'"
+            [(ngModel)]="duracionCantidad"
+          />
+        </div>
+
+        <div class="indicacion-campo">
+          <label class="indicacion-etiqueta" for="duracionTipoIndicada">Tipo de duración</label>
+          <select
+            class="indicacion-input"
+            id="duracionTipoIndicada"
+            name="duracionTipo"
+            [(ngModel)]="duracionTipo"
+          >
+            <option value="">Seleccionar...</option>
+            @for (opcion of tiposDuracion; track opcion.id) {
+              <option [value]="opcion.id">{{ opcion.nombre }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- Observaciones del medicamento -->
+      <div class="indicacion-fila">
+        <div class="indicacion-campo indicacion-campo--completo">
+          <label class="indicacion-etiqueta" for="observacionesIndicadas">Observaciones</label>
+          <textarea
+            class="indicacion-input indicacion-textarea indicacion-textarea--medicamento"
+            id="observacionesIndicadas"
+            name="observaciones"
+            placeholder="Indicaciones adicionales..."
+            maxlength="2000"
+            [(ngModel)]="observaciones"
+          ></textarea>
+        </div>
+      </div>
+    }
+
+    <!-- Acciones del formulario -->
+    <div class="acciones-formulario indicacion-acciones">
+      <button type="button" class="btn _cancelar" [disabled]="guardando" (click)="limpiarFormulario()">
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="btn _guardar"
+        [disabled]="!puedeGuardar || (indicacionEnEdicion !== null && !hayCambiosEnEdicion)"
+      >
+        {{ textoBotonGuardar }}
+      </button>
+    </div>
+  </form>
+  }
+</section>
+
+<!-- Medicamentos indicados en el episodio actual -->
+<section class="panel panel-indicados" aria-labelledby="tituloIndicados">
+  <h3 class="panel-titulo indicacion-titulo" id="tituloIndicados">Medicamentos indicados</h3>
+
+  <!-- Filtros del listado: cada opción muestra las indicaciones que están en un estado -->
+  <div
+    class="indicados-filtros"
+    role="group"
+    aria-label="Filtrar medicamentos indicados por estado"
+  >
+    @for (filtro of filtrosIndicacion; track filtro.id) {
+      <button
+        type="button"
+        class="indicados-filtro"
+        [class.indicados-filtro--activo]="filtroIndicacion === filtro.id"
+        [attr.aria-pressed]="filtroIndicacion === filtro.id"
+        (click)="seleccionarFiltroIndicacion(filtro.id)"
+      >
+        {{ filtro.etiqueta }}
+      </button>
+    }
+  </div>
+
+  <!-- Listado de medicamentos: solo las tarjetas se desplazan bajo el título y los filtros fijos -->
+  <div class="indicados-lista">
+    @if (cargando) {
+      <p class="indicacion-vacio">Cargando indicaciones...</p>
+    } @else if (sinEpisodioActivo) {
+      <p class="indicacion-vacio">Abra un episodio para consultar sus indicaciones.</p>
+    } @else if (errorCarga) {
+      <p class="indicacion-vacio">
+        No se pudieron cargar las indicaciones. Intente nuevamente.
+      </p>
+    } @else {
+      @for (indicacion of indicacionesFiltradas; track indicacion.id) {
+      <article
+        class="indicacion-card"
+        [ngClass]="'indicacion-card--' + indicacion.tono"
+        [class.indicacion-card--eliminada]="indicacion.estado === 'eliminada'"
+        [attr.data-indicacion-id]="indicacion.id"
+        [class.indicacion-card--menu-abierto]="menuIndicacionAbierta === indicacion.id"
+        [class.indicacion-card--edicion]="indicacionEnEdicion === indicacion.id"
+      >
+        <header class="indicacion-encabezado">
+          <div class="indicacion-nombre-grupo">
+            <span class="indicacion-nombre">{{ indicacion.descripcion }}</span>
+            @if (indicacion.medicamentoLibre) {
+              <span class="indicacion-badge-no-registrado">Medicamento no registrado</span>
+            }
+          </div>
+
+          <!-- Menú de opciones de la tarjeta: se despliega sobre ella sin cambiar su tamaño -->
+          @if (puedeGestionar(indicacion.usuarioId)) {
+          <button
+            type="button"
+            class="indicacion-menu-trigger"
+            title="Más opciones"
+            aria-haspopup="menu"
+            [attr.aria-label]="'Más opciones para ' + indicacion.nombre"
+            [attr.aria-expanded]="menuIndicacionAbierta === indicacion.id"
+            (click)="alternarMenuIndicacion(indicacion.id)"
+          >
+            <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+          </button>
+          }
+        </header>
+
+        <ul class="indicacion-badges">
+          <li>{{ textoCantidad(indicacion) }}</li>
+          <li>{{ textoFrecuencia(indicacion) }}</li>
+          @if (indicacion.duracionTipo) {
+            <li>{{ textoDuracion(indicacion) }}</li>
+          }
+        </ul>
+
+        @if (indicacion.observaciones) {
+          <p class="indicacion-observaciones">{{ indicacion.observaciones }}</p>
+        }
+
+        <footer class="indicacion-meta">
+          <span><i class="bi bi-calendar3" aria-hidden="true"></i>{{ indicacion.fecha }}</span>
+          <span><i class="bi bi-clock" aria-hidden="true"></i>{{ indicacion.hora }}</span>
+          <span><i class="bi bi-person" aria-hidden="true"></i>{{ indicacion.medico }}</span>
+          <button
+            type="button"
+            class="indicacion-menu-trigger indicacion-meta-toggle"
+            [attr.aria-expanded]="registrosAbiertos(indicacion.id)"
+            [attr.aria-controls]="'registros-' + indicacion.id"
+            [attr.aria-label]="
+              registrosAbiertos(indicacion.id)
+                ? 'Ocultar registros de Enfermería'
+                : 'Mostrar registros de Enfermería'
+            "
+            [title]="
+              registrosAbiertos(indicacion.id)
+                ? 'Ocultar registros de Enfermería'
+                : 'Mostrar registros de Enfermería'
+            "
+            (click)="alternarRegistros(indicacion)"
+          >
+            <i
+              class="bi"
+              [class.bi-chevron-up]="registrosAbiertos(indicacion.id)"
+              [class.bi-chevron-down]="!registrosAbiertos(indicacion.id)"
+              aria-hidden="true"
+            ></i>
+          </button>
+        </footer>
+
+        <!-- Registros que ya realizó Enfermería -->
+        @if (registrosAbiertos(indicacion.id)) {
+          <div class="indicacion-registros" [attr.id]="'registros-' + indicacion.id">
+            @if (cargandoRegistros) {
+              <p class="indicacion-vacio">Cargando registros de Enfermería...</p>
+            } @else if (errorRegistros) {
+              <p class="indicacion-vacio">
+                No se pudieron cargar los registros. Cierre y vuelva a desplegar la tarjeta.
+              </p>
+            } @else if (registrosDe(indicacion.id).length) {
+              <div class="aplicaciones-historial">
+                <table class="aplicaciones-tabla" aria-label="Registros de Enfermería">
+                  <thead>
+                    <tr>
+                      <th class="aplicaciones-tabla_numero" scope="col">No.</th>
+                      <th class="aplicaciones-tabla_fecha" scope="col">Fecha programada</th>
+                      <th class="aplicaciones-tabla_fecha" scope="col">Fecha de registro</th>
+                      <th class="aplicaciones-tabla_estado celda_centrada" scope="col">Estado</th>
+                      <th class="aplicaciones-tabla_usuario" scope="col">Usuario</th>
+                      <th class="aplicaciones-tabla_acciones" scope="col">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (registro of registrosDe(indicacion.id); track registro.id) {
+                      <tr [class.aplicaciones-fila--resultados]="detalleAbierto === registro.id">
+                        <td class="aplicaciones-tabla_numero">{{ registro.numero }}</td>
+                        <td class="aplicaciones-tabla_fecha">{{ registro.fechaHoraProgramada }}</td>
+                        <td class="aplicaciones-tabla_fecha">{{ registro.fechaRegistro }}</td>
+                        <td class="aplicaciones-tabla_estado celda_centrada">
+                          <i
+                            class="bi"
+                            [class.bi-check-circle-fill]="registro.esPositivo"
+                            [class.bi-x-circle-fill]="!registro.esPositivo"
+                            [class.registro-positivo]="registro.esPositivo"
+                            [class.registro-negativo]="!registro.esPositivo"
+                            role="img"
+                            [attr.aria-label]="registro.estado"
+                            [attr.title]="registro.estado"
+                          ></i>
+                        </td>
+                        <td>{{ registro.usuario }}</td>
+                        <td class="aplicaciones-tabla_acciones">
+                          <div class="aplicaciones-acciones">
+                            <button
+                              type="button"
+                              class="aplicaciones-accion aplicaciones-accion--resultados"
+                              [title]="
+                                detalleAbierto === registro.id ? 'Ocultar detalle' : 'Ver detalle'
+                              "
+                              [attr.aria-label]="
+                                detalleAbierto === registro.id
+                                  ? 'Ocultar detalle del registro'
+                                  : 'Ver detalle del registro'
+                              "
+                              [attr.aria-expanded]="detalleAbierto === registro.id"
+                              (click)="verDetalle(registro)"
+                            >
+                              <i
+                                class="bi"
+                                [class.bi-eye]="detalleAbierto !== registro.id"
+                                [class.bi-eye-slash]="detalleAbierto === registro.id"
+                                aria-hidden="true"
+                              ></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      @if (detalleAbierto === registro.id) {
+                        <tr class="aplicaciones-resultados">
+                          <td colspan="6">
+                            <div class="resultado-control">
+                              <div class="resultado-control_observacion">
+                                <span class="resultado-control_observacion-etiqueta">
+                                  Observación
+                                </span>
+                                <p>{{ registro.observacion.trim() || 'Sin observación' }}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="indicacion-vacio">Enfermería no ha registrado aplicaciones.</p>
+            }
+          </div>
+        }
+
+        <!-- Menú de opciones: se dibuja al final de la tarjeta y flota sobre ella -->
+        @if (menuIndicacionAbierta === indicacion.id && puedeGestionar(indicacion.usuarioId)) {
+          <div
+            class="indicacion-menu"
+            role="menu"
+            [attr.aria-label]="'Opciones para ' + indicacion.nombre"
+          >
+            @if (indicacion.estado !== 'activa') {
+              <div class="indicacion-menu-opcion">
+                <span>Reactivar</span>
+                <button
+                  type="button"
+                  class="iconEstado"
+                  role="menuitem"
+                  title="Reactivar indicación"
+                  [attr.aria-label]="'Reactivar la indicación ' + indicacion.nombre"
+                  (click)="reactivarIndicacion(indicacion)"
+                >
+                  <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                </button>
+              </div>
+            }
+
+            <div class="indicacion-menu-opcion">
+              <span>Editar</span>
+              <button
+                type="button"
+                class="iconEditar"
+                role="menuitem"
+                title="Editar indicación"
+                [attr.aria-label]="'Editar la indicación ' + indicacion.nombre"
+                (click)="editarIndicacion(indicacion); cerrarMenuIndicacion()"
+              >
+                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            @if (indicacion.estado !== 'eliminada') {
+              <div class="indicacion-menu-opcion">
+                <span>Eliminar</span>
+                <button
+                  type="button"
+                  class="iconQuitar"
+                  role="menuitem"
+                  title="Eliminar indicación"
+                  [attr.aria-label]="'Eliminar la indicación ' + indicacion.nombre"
+                  (click)="eliminarIndicacion(indicacion)"
+                >
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </article>
+    } @empty {
+        <p class="indicacion-vacio">{{ mensajeSinIndicaciones }}</p>
+      }
+    }
+  </div>
+</section>

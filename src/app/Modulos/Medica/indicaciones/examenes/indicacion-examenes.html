@@ -1,0 +1,271 @@
+<!-- Exámenes indicados: registro del examen y listado con el filtro de disponibilidad -->
+<section class="panel panel-seccion" aria-labelledby="tituloExamenes">
+  <h3 class="panel-titulo indicacion-titulo" id="tituloExamenes">Exámenes</h3>
+
+  @if (!soloLectura) {
+  <form class="indicacion-form" (ngSubmit)="agregarExamen()">
+    <!-- Nombre del examen y su observación: solo el nombre es obligatorio -->
+    <div class="indicacion-fila indicacion-fila--dos">
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="nombreExamen">
+          Nombre de examen<span class="indicacion-obligatorio" aria-hidden="true">*</span>
+        </label>
+        <input
+          class="indicacion-input"
+          id="nombreExamen"
+          name="nombreExamen"
+          type="text"
+          placeholder="Ej. Hemograma completo"
+          aria-required="true"
+          [(ngModel)]="nombreExamen"
+        />
+      </div>
+
+      <div class="indicacion-campo">
+        <label class="indicacion-etiqueta" for="observacionExamen">Observación</label>
+        <textarea
+          class="indicacion-input indicacion-textarea"
+          id="observacionExamen"
+          name="observacionExamen"
+          placeholder="Indicaciones adicionales..."
+          [(ngModel)]="observacionExamen"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Archivos del examen: opcionales; adjunta imágenes o PDF a la indicación -->
+    <div class="indicacion-campo indicacion-archivo">
+      <label class="indicacion-etiqueta" for="archivoExamen">Archivos o imágenes</label>
+
+      <!-- Archivos ya guardados al editar: la X los marca para eliminarlos al guardar -->
+      @if (archivosExistentes.length) {
+        <div class="examen-archivos-guardados">
+          <p class="ayuda-archivo">
+            Marca con X los archivos que quieras eliminar; la eliminación se aplicará al guardar.
+          </p>
+
+          <div class="archivos-seleccionados">
+            @for (archivo of archivosExistentes; track archivo.id) {
+              <div class="archivo-seleccionado">
+                <i class="bi {{ iconoArchivo(archivo) }}" aria-hidden="true"></i>
+                <span class="archivo-nombre">{{ archivo.nombreOriginal }}</span>
+                <span class="archivo-peso">{{ pesoArchivo(archivo) }}</span>
+                <button
+                  type="button"
+                  [attr.aria-label]="'Eliminar ' + archivo.nombreOriginal"
+                  [disabled]="guardando"
+                  (click)="quitarArchivoExistente(archivo)"
+                >
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (mostrarZonaCarga || archivosExamen.length) {
+        <div
+          class="carga-archivo"
+          (dragover)="$event.preventDefault()"
+          (drop)="soltarArchivosExamen($event)"
+        >
+          <input
+            #archivoExamenInput
+            type="file"
+            id="archivoExamen"
+            name="archivoExamen"
+            multiple
+            [attr.accept]="aceptadosExamen"
+            [disabled]="guardando"
+            (change)="seleccionarArchivosExamen($event)"
+          />
+
+          @if (mostrarZonaCarga) {
+            <label for="archivoExamen" class="zona-carga">
+              <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+              <strong>Arrastra y suelta las imágenes o los PDF aquí</strong>
+              <span>o haz clic para seleccionar</span>
+              <span class="boton-archivo">Seleccionar archivos</span>
+              <span class="ayuda-archivo">
+                Imágenes JPG o PNG · PDF · máximo {{ archivos.tamanoMaximoMb }} MB por archivo
+              </span>
+            </label>
+          } @else {
+            <div class="archivos-seleccionados">
+              @for (archivo of archivosExamen; track $index) {
+                <div class="archivo-seleccionado">
+                  <i class="bi {{ archivo.icono }}" aria-hidden="true"></i>
+                  <span class="archivo-nombre">{{ archivo.nombre }}</span>
+                  <span class="archivo-peso">{{ archivo.peso }}</span>
+                  <button
+                    type="button"
+                    [attr.aria-label]="'Quitar ' + archivo.nombre"
+                    [disabled]="guardando"
+                    (click)="quitarArchivoExamen($index)"
+                  >
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Acciones del formulario -->
+    <div class="acciones-formulario indicacion-acciones">
+      <button type="button" class="btn _cancelar" [disabled]="guardando" (click)="limpiarFormularioExamen()">
+        Cancelar
+      </button>
+      @if (archivosExamen.length) {
+        <button
+          type="button"
+          class="btn _principal"
+          [disabled]="guardando"
+          (click)="abrirGestorArchivosExamen()"
+        >
+          Agregar archivo
+        </button>
+      }
+      <button type="submit" class="btn _guardar" [disabled]="!puedeGuardarExamen">
+        {{ guardando ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </div>
+  </form>
+  }
+</section>
+
+<!-- Exámenes indicados en el episodio actual -->
+<section class="panel panel-indicados" aria-labelledby="tituloExamenesIndicados">
+  <h3 class="panel-titulo indicacion-titulo" id="tituloExamenesIndicados">Exámenes indicados</h3>
+
+  <!-- Filtros del listado: cada opción muestra los exámenes de una disponibilidad o los eliminados -->
+  <div
+    class="indicados-filtros"
+    role="group"
+    aria-label="Filtrar exámenes indicados por disponibilidad o estado"
+  >
+    @for (filtro of filtrosExamen; track filtro.id) {
+      <button
+        type="button"
+        class="indicados-filtro"
+        [class.indicados-filtro--activo]="filtroExamen === filtro.id"
+        [attr.aria-pressed]="filtroExamen === filtro.id"
+        (click)="seleccionarFiltroExamen(filtro.id)"
+      >
+        {{ filtro.etiqueta }}
+      </button>
+    }
+  </div>
+
+  <!-- Listado de exámenes: solo las tarjetas se desplazan bajo el título y los filtros fijos -->
+  <div class="indicados-lista">
+    @if (cargando) {
+      <p class="indicacion-vacio">Cargando exámenes...</p>
+    } @else if (sinEpisodioActivo) {
+      <p class="indicacion-vacio">Abra un episodio para consultar sus exámenes.</p>
+    } @else if (errorCarga) {
+      <p class="indicacion-vacio">
+        No se pudieron cargar los exámenes. Intente nuevamente.
+      </p>
+    } @else {
+      @for (examen of examenesFiltrados; track examen.id) {
+        <article
+          class="indicacion-card"
+          [class.indicacion-card--verde]="examen.disponible && examen.estado === 'activo'"
+          [class.indicacion-card--rojo]="!examen.disponible && examen.estado === 'activo'"
+          [class.indicacion-card--eliminada]="examen.estado === 'eliminado'"
+          [class.indicacion-card--menu-abierto]="menuIndicacionAbierta === examen.id"
+          [class.indicacion-card--edicion]="examenEnEdicion === examen.id"
+          [attr.data-examen-id]="examen.id"
+        >
+          <header class="indicacion-encabezado">
+            <span class="indicacion-nombre">{{ examen.nombre }}</span>
+
+            <!-- Menú de opciones de la tarjeta: mismo despliegue del listado de medicamentos -->
+            @if (puedeGestionar(examen.usuarioId)) {
+            <button
+              type="button"
+              class="indicacion-menu-trigger"
+              title="Más opciones"
+              aria-haspopup="menu"
+              [attr.aria-label]="'Más opciones para el examen ' + examen.nombre"
+              [attr.aria-expanded]="menuIndicacionAbierta === examen.id"
+              (click)="alternarMenuIndicacion(examen.id)"
+            >
+              <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+            </button>
+            }
+          </header>
+
+          @if (examen.observacion) {
+            <p class="indicacion-observaciones">{{ examen.observacion }}</p>
+          }
+
+          <footer class="indicacion-meta">
+            <span>
+              <i class="bi bi-calendar3" aria-hidden="true"></i>
+              {{ examen.fecha }}
+            </span>
+            <span><i class="bi bi-clock" aria-hidden="true"></i>{{ examen.hora }}</span>
+            <span><i class="bi bi-person" aria-hidden="true"></i>{{ examen.medico }}</span>
+          </footer>
+
+          <!-- Disponibilidad del examen: el ojo abre el visor de sus archivos -->
+          @if (examen.archivos.length && examen.estado === 'activo') {
+            <button
+              type="button"
+              class="examen-ojo"
+              title="Ver los archivos del examen"
+              [attr.aria-label]="'Ver los archivos del examen ' + examen.nombre"
+              (click)="verArchivosExamen(examen)"
+            >
+              <i class="bi bi-eye" aria-hidden="true"></i>
+            </button>
+          }
+
+          <!-- Menú de opciones: se dibuja al final de la tarjeta y flota sobre ella -->
+          @if (menuIndicacionAbierta === examen.id && puedeGestionar(examen.usuarioId)) {
+            <div
+              class="indicacion-menu"
+              role="menu"
+              [attr.aria-label]="'Opciones para el examen ' + examen.nombre"
+            >
+              <div class="indicacion-menu-opcion">
+                <span>Editar</span>
+                <button
+                  type="button"
+                  class="iconEditar"
+                  role="menuitem"
+                  title="Editar examen"
+                  [attr.aria-label]="'Editar el examen ' + examen.nombre"
+                  (click)="editarExamen(examen); cerrarMenuIndicacion()"
+                >
+                  <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <div class="indicacion-menu-opcion">
+                <span>Eliminar</span>
+                <button
+                  type="button"
+                  class="iconQuitar"
+                  role="menuitem"
+                  title="Eliminar examen"
+                  [attr.aria-label]="'Eliminar el examen ' + examen.nombre"
+                  (click)="eliminarExamen(examen)"
+                >
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </article>
+      } @empty {
+        <p class="indicacion-vacio">{{ mensajeSinExamenes }}</p>
+      }
+    }
+  </div>
+</section>

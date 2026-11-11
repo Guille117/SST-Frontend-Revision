@@ -1,0 +1,401 @@
+dialog {
+  border: 0;
+  background: transparent;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  border-radius: 20px;
+  padding: 0;
+  box-shadow: none;
+  width: min(680px, calc(100vw - 32px));
+  min-width: 320px;
+  max-width: none;
+  max-height: 80vh;
+  overflow: visible;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) translateY(24px);
+
+  &::backdrop {
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+  }
+}
+
+dialog.modal-ancho {
+  width: min(960px, calc(100vw - 32px));
+}
+
+dialog.open,
+dialog[open] {
+  animation: modalIn 0.5s ease forwards;
+}
+
+dialog.open::backdrop,
+dialog[open]::backdrop {
+  animation: backdropIn 0.5s ease forwards;
+}
+
+dialog.closing {
+  animation: modalOut 0.5s ease forwards;
+}
+
+dialog.closing::backdrop {
+  animation: backdropOut 0.5s ease forwards;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -50%) translateY(24px);
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+}
+
+@keyframes modalOut {
+  from {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -50%) translateY(24px);
+  }
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes backdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Visor de archivos reutilizable: ocupa toda la pantalla y usa su propia barra superior. */
+dialog.modal-visor-documentos {
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  min-width: 0;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #eef1f6;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: none;
+}
+
+dialog.modal-visor-documentos::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+dialog.modal-visor-documentos.open,
+dialog.modal-visor-documentos[open] {
+  animation: visorIn 0.3s ease forwards;
+}
+
+dialog.modal-visor-documentos.closing {
+  animation: visorOut 0.3s ease forwards;
+}
+
+@keyframes visorIn {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@keyframes visorOut {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+dialog.modal-visor-documentos .modal-wrapper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: auto;
+  background: #eef1f6;
+  border-radius: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  .modal-header,
+  .modal-footer {
+    display: none;
+  }
+
+  .modal-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  /* El contenedor del componente dinámico queda como ancla sin ocupar altura. */
+  .modal-body > div:first-child {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* El componente creado dinámicamente es hermano del contenedor y ocupa todo el cuerpo. */
+  .modal-body > app-visor-archivos {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+  }
+}
+
+.modal-wrapper {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(245, 247, 255, 0.66) 58%, rgba(234, 232, 255, 0.58) 100%);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  overflow: hidden;
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30px 0 7px 30px;
+    position: relative;
+    z-index: 2;
+    overflow: visible;
+    background:
+      linear-gradient(105deg, rgba(255, 255, 255, 0.12) 0%, rgba(245, 247, 255, 0.08) 58%, rgba(220, 217, 255, 0.14) 100%),
+      linear-gradient(to right, transparent 0%, rgba(194, 188, 255, 0.7) 5%, rgba(194, 188, 255, 0.7) 95%, transparent 100%) bottom / 100% 2px no-repeat;
+
+    &::before {
+      position: absolute;
+      right: 0;
+      bottom: -24px;
+      left: 0;
+      height: 38px;
+      content: '';
+      pointer-events: none;
+      background: linear-gradient(to bottom, rgba(220, 217, 255, 0.18), rgba(234, 232, 255, 0));
+      filter: blur(10px);
+      opacity: 0.8;
+    }
+
+    h2 {
+
+          p {
+            position: relative;
+            z-index: 1;
+            margin: 4px 0 0;
+            color: #667085;
+          }
+      position: relative;
+      z-index: 1;
+      color: #0B1739;
+    }
+
+  }
+
+  .modal-title{
+    
+  }
+
+  .modal-body {
+    position: relative;
+    z-index: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: transparent;
+  }
+
+  .modal-footer {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 18px 1.5rem 1.5rem;
+    background: transparent;
+
+    &::before {
+      position: absolute;
+      z-index: 0;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 2px;
+      content: '';
+      pointer-events: none;
+      background: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(194, 188, 255, 0.7) 5%,
+        rgba(194, 188, 255, 0.7) 95%,
+        transparent 100%
+      );
+    }
+
+    &::after {
+      position: absolute;
+      z-index: 0;
+      bottom: -8px;
+      left: -6%;
+      width: 74%;
+      height: 94px;
+      content: '';
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at left bottom, rgba(220, 217, 255, 0.32) 0%, rgba(234, 232, 255, 0.16) 48%, transparent 82%),
+        linear-gradient(to top, rgba(245, 247, 255, 0.24), transparent 72%);
+      filter: blur(10px);
+      opacity: 0.85;
+    }
+
+    .btn {
+      position: relative;
+      z-index: 1;
+    }
+  }
+}
+
+.modal-popup-host {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.modal-popup-host:has(.swal2-container) {
+  pointer-events: auto;
+}
+
+.modal-popup-host .swal2-container {
+  position: absolute !important;
+  z-index: 20 !important;
+  inset: 14px 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: auto !important;
+  padding: 0 16px !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+
+.modal-popup-host .swal2-popup {
+  position: relative !important;
+  z-index: 21 !important;
+  pointer-events: auto !important;
+}
+
+.modal-popup-host .swal2-popup * {
+  pointer-events: auto !important;
+}
+
+/* ==================== RESPONSIVIDAD ==================== */
+@media (max-width: 900px) {
+  dialog {
+    width: calc(100vw - 24px);
+    min-width: 0;
+    max-height: 90dvh;
+  }
+
+  dialog.modal-ancho {
+    width: calc(100vw - 24px);
+  }
+
+  .modal-wrapper {
+    .modal-header {
+      padding: 22px 0 7px 20px;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    .modal-footer {
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px 1.25rem 1.25rem;
+
+      .btn {
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  dialog,
+  dialog.modal-ancho {
+    width: calc(100vw - 16px);
+    max-height: 92dvh;
+    border-radius: 16px;
+  }
+
+  .modal-wrapper {
+    border-radius: 16px;
+
+    .modal-header {
+      padding: 18px 0 8px 16px;
+
+      h2 {
+        font-size: 1.15rem;
+      }
+    }
+
+    .modal-body {
+      padding: 14px;
+    }
+
+    .modal-footer {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 12px 14px 14px;
+
+      .btn {
+        width: 100%;
+      }
+    }
+  }
+}
+

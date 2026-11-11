@@ -1,0 +1,982 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { of, throwError, TimeoutError } from 'rxjs';
+
+import { Evaluacion } from './evaluacion';
+import { ExamenFisicoService } from './data/examen-fisico-service';
+import { ExamenFisicoResponse, ParteCuerpoResponse } from './data/examenFisicoInterfaz';
+import { OpcionOtroComponent } from '../../../shared/opcion-otro/opcion-otro';
+import { HistoriaClinicaService } from './data/historia-clinica-service';
+import { DiagnosticoService } from './data/diagnostico-service';
+import { EpisodioActivoService } from '../data/episodio-activo-service';
+import { AuthService } from '../../Auth/data/auth-service';
+import { PopUps } from '../../../shared/popUps/popUpsService';
+import { PacienteService } from '../../Pacientes/paciente/data/paciente-service';
+import { PacienteDetalle } from '../../Pacientes/paciente/data/pacienteInterfaz';
+import { SignosVitalesService } from '../../Enfermeria/monitoreo/data/signos-vitales-service';
+
+const EPISODIO_ID = 1;
+
+describe('Evaluacion', () => {
+  let component: Evaluacion;
+  let fixture: ComponentFixture<Evaluacion>;
+
+  // La pantalla consulta el backend al montarse: se simulan sus dependencias.
+  const examenFisicoService = {
+    getPartesCuerpo: vi.fn(),
+    getExamenesPorEpisodio: vi.fn(),
+    postParteCuerpo: vi.fn(),
+    postExamen: vi.fn(),
+    putExamen: vi.fn(),
+    cambiarEstado: vi.fn(),
+  };
+  const historiaClinicaService = { getHistoriasPorEpisodio: vi.fn() };
+  const diagnosticoService = {
+    getDiagnosticosPorEpisodio: vi.fn(),
+    postDiagnostico: vi.fn(),
+    putDiagnostico: vi.fn(),
+    cambiarEstado: vi.fn(),
+  };
+  const authService = { currentUser: vi.fn() };
+  const popUps = {
+    exito: vi.fn(),
+    error: vi.fn(),
+    errorDesdeBackend: vi.fn(),
+    confirmarToast: vi.fn(),
+    advertencia: vi.fn(),
+    formIncompleto: vi.fn(),
+  };
+  const episodioActivo = {
+    obtener: vi.fn(() => EPISODIO_ID),
+    pacienteId: vi.fn(() => 1),
+    guardar: vi.fn(),
+    guardarPaciente: vi.fn(),
+    limpiar: vi.fn(),
+    esSoloLectura: () => false,
+  };
+
+  const pacienteDetalle = {
+    nombreCompleto: 'Juan Pérez',
+    codigoExpediente: 'EXP-0241',
+    tipoAtencion: 'HOSPITALIZACION',
+    fechaHoraIngreso: '2026-10-10T08:30:00',
+    camaCodigo: 'A-105',
+    descripcion: 'Dolor abdominal y vómitos',
+    alergias: [],
+  } as unknown as PacienteDetalle;
+
+  const pacienteService = {
+    obtenerPaciente: vi.fn(() => of(pacienteDetalle)),
+    listarPacientes: vi.fn(() => of([])),
+  };
+
+  const signosVitalesService = {
+    buscarPorEpisodio: vi.fn(() =>
+      of([
+        {
+          id: 1,
+          sistolica: 120,
+          diastolica: 80,
+          frecuenciaCardiaca: 82,
+          frecuenciaRespiratoria: 18,
+          temperatura: 37.2,
+          saturacion: 97,
+          observacion: null,
+          episodioId: EPISODIO_ID,
+          usuarioId: 2,
+          usuarioNombre: 'Enf. Ana',
+          usuarioNombreCorto: 'Enf. Ana',
+          fecha: '2026-10-10T09:00:00',
+          eliminado: false,
+        },
+      ]),
+    ),
+  };
+
+  const partesCuerpo: ParteCuerpoResponse[] = [
+    { id: 3, nombre: 'Tórax', estado: true },
+    { id: 4, nombre: 'Abdomen', estado: true },
+  ];
+
+  const examen = (
+    id: number,
+    parteCuerpoId: number,
+    parteCuerpoNombre: string,
+    descripcion: string,
+  ): ExamenFisicoResponse => ({
+    id,
+    descripcion,
+    episodioId: EPISODIO_ID,
+    parteCuerpoId,
+    parteCuerpoNombre,
+    usuarioId: 2,
+    usuarioNombre: 'Carlos Mendez',
+    usuarioNombreCorto: 'Carlos Mendez',
+    fecha: '2026-10-16T10:15:00',
+    estado: true,
+  });
+
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    episodioActivo.esSoloLectura = () => false;
+    examenFisicoService.getPartesCuerpo.mockReturnValue(of(partesCuerpo));
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(of([]));
+    examenFisicoService.postParteCuerpo.mockReturnValue(
+      of({ id: 9, nombre: 'Nuevo parte', estado: true }),
+    );
+    examenFisicoService.postExamen.mockReturnValue(
+      of(examen(20, 3, 'Tórax', 'Ruidos cardiacos normales')),
+    );
+    examenFisicoService.putExamen.mockReturnValue(
+      of(examen(21, 3, 'Tórax', 'Dolor a la palpación')),
+    );
+    examenFisicoService.cambiarEstado.mockReturnValue(
+      of(examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')),
+    );
+    popUps.confirmarToast.mockResolvedValue(true);
+    historiaClinicaService.getHistoriasPorEpisodio.mockReturnValue(of([]));
+    diagnosticoService.getDiagnosticosPorEpisodio.mockReturnValue(of([]));
+    authService.currentUser.mockReturnValue({ id: 2 });
+
+    await TestBed.configureTestingModule({
+      imports: [Evaluacion],
+      providers: [
+        { provide: ExamenFisicoService, useValue: examenFisicoService },
+        { provide: HistoriaClinicaService, useValue: historiaClinicaService },
+        { provide: DiagnosticoService, useValue: diagnosticoService },
+        { provide: AuthService, useValue: authService },
+        { provide: EpisodioActivoService, useValue: episodioActivo },
+        { provide: PacienteService, useValue: pacienteService },
+        { provide: SignosVitalesService, useValue: signosVitalesService },
+        { provide: PopUps, useValue: popUps },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(Evaluacion);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+  });
+
+  const elementos = <T extends Element>(selector: string): NodeListOf<T> =>
+    fixture.nativeElement.querySelectorAll(selector);
+
+  const elemento = <T extends Element>(selector: string): T =>
+    fixture.nativeElement.querySelector(selector);
+
+  // Selectores semánticos: los botones usan las clases globales de src/styles/botonesStyle.scss, las
+  // tarjetas del panel de secciones las de src/styles/tarjetaStyle.scss y la parte del cuerpo del
+  // examen físico se elige en el selector .parte-cuerpo-select
+  const selectParte = (): HTMLSelectElement => elemento<HTMLSelectElement>('.parte-cuerpo-select');
+
+  /** Elige una opción del selector de partes del cuerpo como lo haría el usuario. */
+  const elegirParte = async (indice: number): Promise<void> => {
+    const select = selectParte();
+    select.selectedIndex = indice;
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+  };
+
+  const abrirOtroParte = async (): Promise<OpcionOtroComponent> => {
+    const select = selectParte();
+    const opcionOtro = Array.from(select.options).find(
+      (opcion) => opcion.textContent?.trim() === 'Otro',
+    );
+    select.selectedIndex = opcionOtro?.index ?? -1;
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture.debugElement.query(By.css('app-opcion-otro'))
+      .componentInstance as OpcionOtroComponent;
+  };
+
+  const campoHallazgo = (): HTMLTextAreaElement => elemento<HTMLTextAreaElement>('.hallazgo-campo');
+
+  const botonCancelar = (): HTMLButtonElement =>
+    elemento<HTMLButtonElement>('.hallazgo-acciones ._cancelar');
+
+  /** El formulario ya no lleva botón "Editar": la edición se dispara desde el menú de la tarjeta. */
+  const botonEditarInline = (): HTMLButtonElement | null =>
+    elemento<HTMLButtonElement>('.hallazgo-acciones ._editar');
+
+  const botonGuardar = (): HTMLButtonElement =>
+    elemento<HTMLButtonElement>('.hallazgo-acciones ._guardar');
+
+  /** Tarjetas de hallazgos registrados, sin contar el esqueleto de carga. */
+  const tarjetasHallazgo = (): HTMLElement[] =>
+    Array.from(elementos<HTMLElement>('.hallazgo-card:not(.hallazgo-card--cargando)'));
+
+  const botonMenuHallazgo = (indice = 0): HTMLButtonElement =>
+    tarjetasHallazgo()[indice].querySelector<HTMLButtonElement>('.hallazgo-menu-trigger')!;
+
+  const menuHallazgo = (indice = 0): HTMLElement | null =>
+    tarjetasHallazgo()[indice].querySelector<HTMLElement>('.hallazgo-menu');
+
+  const botonEditarHallazgo = (indice = 0): HTMLButtonElement | null =>
+    tarjetasHallazgo()[indice].querySelector<HTMLButtonElement>('.hallazgo-menu .iconEditar');
+
+  const botonEliminarHallazgo = (indice = 0): HTMLButtonElement | null =>
+    tarjetasHallazgo()[indice].querySelector<HTMLButtonElement>('.hallazgo-menu .iconQuitar');
+
+  /** Abre el menú de opciones de la tarjeta indicada. */
+  const abrirMenuHallazgo = async (indice = 0): Promise<void> => {
+    botonMenuHallazgo(indice).click();
+    await fixture.whenStable();
+  };
+
+  /** Carga en el formulario la tarjeta indicada desde el menú de opciones. */
+  const pulsarEditarHallazgo = async (indice = 0): Promise<void> => {
+    const boton = botonEditarHallazgo(indice);
+    if (!boton) throw new Error('La opción "Editar" del menú de la tarjeta no está disponible');
+    boton.click();
+    await fixture.whenStable();
+  };
+
+  /** Remonta la pantalla después de cambiar los datos simulados: la carga arranca al crearla. */
+  const remontar = async (): Promise<void> => {
+    fixture.destroy();
+
+    fixture = TestBed.createComponent(Evaluacion);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
+
+  const escribir = async (texto: string): Promise<void> => {
+    campoHallazgo().value = texto;
+    campoHallazgo().dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+  };
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+    expect(examenFisicoService.getPartesCuerpo).toHaveBeenCalledExactlyOnceWith(true);
+    expect(examenFisicoService.getExamenesPorEpisodio).toHaveBeenCalledExactlyOnceWith(
+      EPISODIO_ID,
+      true,
+    );
+  });
+
+  it('ubica las acciones del hallazgo en la fila compartida y con los estilos globales', () => {
+    const acciones = elemento<HTMLElement>('.hallazgo-acciones');
+
+    expect(acciones.classList.contains('acciones-formulario')).toBe(true);
+    expect(botonGuardar().classList.contains('_guardar')).toBe(true);
+    expect(botonCancelar().classList.contains('_cancelar')).toBe(true);
+  });
+
+  it('muestra las tres secciones con la de examen físico activa', () => {
+    const secciones = elementos<HTMLButtonElement>('.tarjeta');
+
+    expect(secciones.length).toBe(3);
+    expect(elementos<HTMLElement>('.tarjeta .tarjeta_icono i').length).toBe(3);
+    expect(elemento<HTMLButtonElement>('.tarjeta--activa').textContent).toContain('Examen físico');
+  });
+
+  it('asigna a cada sección un icono acorde', () => {
+    const iconos = elementos<HTMLElement>('.tarjeta .tarjeta_icono i');
+
+    expect(iconos.length).toBe(3);
+    expect(iconos[0].classList.contains('bi-journal-medical')).toBe(true);
+    expect(iconos[1].classList.contains('bi-heart-pulse')).toBe(true);
+    expect(iconos[2].classList.contains('bi-clipboard2-check')).toBe(true);
+  });
+
+  it('cambia de sección al pulsarla', async () => {
+    elementos<HTMLButtonElement>('.tarjeta')[0].click();
+    await fixture.whenStable();
+
+    expect(component.seccionActiva).toBe('historia-clinica');
+    expect(elemento<HTMLButtonElement>('.tarjeta--activa').textContent).toContain(
+      'Historia clínica',
+    );
+    expect(elemento<HTMLButtonElement>('.tarjeta--activa').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
+
+  it('muestra el panel de la sección activa en el área central', async () => {
+    // La pantalla abre en el examen físico
+    expect(elemento('.hallazgo-form')).not.toBeNull();
+    expect(elemento('app-historia-clinica')).toBeNull();
+    expect(elemento('app-diagnostico')).toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[0].click();
+    await fixture.whenStable();
+
+    expect(elemento('app-historia-clinica .historia-campo')).not.toBeNull();
+    expect(elemento('.hallazgo-form')).toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[2].click();
+    await fixture.whenStable();
+
+    expect(elemento('app-diagnostico .diagnostico-form')).not.toBeNull();
+    expect(elemento('app-historia-clinica')).toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[1].click();
+    await fixture.whenStable();
+
+    expect(elemento('.hallazgo-form')).not.toBeNull();
+    expect(elemento('app-diagnostico')).toBeNull();
+  });
+
+  it('mantiene las secciones y los hallazgos fuera del panel que cambia', async () => {
+    // El carril de secciones no vive dentro del área central que cambia de contenido
+    expect(elementos<HTMLElement>('.panel-secciones .tarjeta').length).toBe(3);
+    expect(elemento<HTMLElement>('.panel-hallazgos')?.closest('.panel-seccion')).toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[0].click();
+    await fixture.whenStable();
+
+    expect(elementos<HTMLElement>('.panel-secciones .tarjeta').length).toBe(3);
+    expect(elemento('app-historia-clinica')?.closest('.panel-secciones')).toBeNull();
+  });
+
+  it('oculta los hallazgos registrados fuera del examen físico', async () => {
+    // El examen físico es la única sección que registra hallazgos
+    expect(component.mostrarHallazgos).toBe(true);
+    expect(elemento<HTMLElement>('.panel-hallazgos')).not.toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[0].click();
+    await fixture.whenStable();
+
+    expect(component.mostrarHallazgos).toBe(false);
+    expect(elemento('.panel-hallazgos')).toBeNull();
+    expect(elemento('.hallazgo-card')).toBeNull();
+    expect(elemento('.hallazgos-vacio')).toBeNull();
+    expect(
+      elemento<HTMLElement>('.evaluacion').classList.contains('evaluacion--sin-hallazgos'),
+    ).toBe(true);
+
+    elementos<HTMLButtonElement>('.tarjeta')[2].click();
+    await fixture.whenStable();
+
+    expect(elemento('.panel-hallazgos')).toBeNull();
+    expect(elemento('.hallazgo-card--cargando')).toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[1].click();
+    await fixture.whenStable();
+
+    expect(elemento<HTMLElement>('.panel-hallazgos')).not.toBeNull();
+    expect(
+      elemento<HTMLElement>('.evaluacion').classList.contains('evaluacion--sin-hallazgos'),
+    ).toBe(false);
+  });
+
+  it('muestra los datos fijos en historia clínica y la ficha plegable en diagnóstico', async () => {
+    const bloque = (): HTMLElement => elemento<HTMLElement>('app-datos-paciente');
+
+    // El examen físico usa la ficha plegable: el bloque compartido arranca cerrado y con su pestaña
+    expect(bloque().querySelector('.ficha-pestana')).not.toBeNull();
+    expect(bloque().querySelector('.ficha')).toBeNull();
+
+    elementos<HTMLButtonElement>('.tarjeta')[0].click();
+    await fixture.whenStable();
+
+    // Historia clínica muestra siempre los datos: el bloque se dibuja desplegado y sin pestaña,
+    // porque no hay nada que abrir
+    expect(bloque().querySelector('.ficha')).not.toBeNull();
+    expect(bloque().querySelector('.ficha-pestana')).toBeNull();
+    expect(component.seccionConDatosPaciente).toBe(true);
+    expect(component.pacienteAbierto).toBe(false);
+    expect(
+      elemento<HTMLElement>('.evaluacion').classList.contains('evaluacion--datos-paciente'),
+    ).toBe(true);
+
+    elementos<HTMLButtonElement>('.tarjeta')[2].click();
+    await fixture.whenStable();
+
+    // Diagnóstico usa la ficha plegable: arranca cerrada con su pestaña y no reserva el ancho
+    expect(bloque().querySelector('.ficha')).toBeNull();
+    expect(bloque().querySelector('.ficha-pestana')).not.toBeNull();
+    expect(component.seccionConDatosPaciente).toBe(false);
+    expect(
+      elemento<HTMLElement>('.evaluacion').classList.contains('evaluacion--datos-paciente'),
+    ).toBe(false);
+
+    bloque().querySelector<HTMLButtonElement>('.ficha-pestana')!.click();
+    await fixture.whenStable();
+
+    // La pestaña abre la ficha del paciente también en diagnóstico
+    expect(bloque().querySelector('.ficha')).not.toBeNull();
+    expect(component.pacienteAbierto).toBe(true);
+  });
+
+  it('vuelve a la ficha plegable al regresar al examen físico', async () => {
+    elementos<HTMLButtonElement>('.tarjeta')[2].click();
+    await fixture.whenStable();
+
+    elementos<HTMLButtonElement>('.tarjeta')[1].click();
+    await fixture.whenStable();
+
+    // Vuelve la ficha plegable: el bloque se cierra y reaparece su pestaña lateral
+    expect(elemento<HTMLElement>('app-datos-paciente .ficha')).toBeNull();
+    expect(elemento('.ficha-pestana')).not.toBeNull();
+    expect(
+      elemento<HTMLElement>('.evaluacion').classList.contains('evaluacion--datos-paciente'),
+    ).toBe(false);
+  });
+
+  it('lista las partes del cuerpo del catálogo y selecciona la primera', () => {
+    const opciones = Array.from(selectParte().options);
+
+    expect(opciones.length).toBe(3);
+    expect(opciones[0].textContent?.trim()).toBe('Tórax');
+    expect(opciones[1].textContent?.trim()).toBe('Abdomen');
+    expect(selectParte().selectedIndex).toBe(0);
+    expect(component.parteSeleccionadaId).toBe(3);
+  });
+
+  it('avisa y deja la captura sin guardar cuando el catálogo de partes del cuerpo llega vacío', async () => {
+    examenFisicoService.getPartesCuerpo.mockReturnValue(of([]));
+    await remontar();
+
+    expect(component.partesCuerpo.length).toBe(0);
+    expect(component.parteSeleccionadaId).toBeNull();
+    expect(selectParte().options.length).toBe(2);
+    expect(selectParte().options[0].textContent?.trim()).toBe('Sin partes del cuerpo disponibles');
+    expect(botonGuardar().disabled).toBe(true);
+    expect(elemento<HTMLElement>('.examen-ayuda').textContent).toContain(
+      'No hay partes del cuerpo disponibles',
+    );
+  });
+
+  it('arranca con el formulario vacío, sin botón Editar y con Guardar deshabilitado', () => {
+    expect(component.modoEdicion).toBe(false);
+    expect(component.hallazgoActual).toBe('');
+    expect(campoHallazgo().readOnly).toBe(false);
+    expect(botonEditarInline()).toBeNull();
+    expect(botonGuardar().disabled).toBe(true);
+  });
+
+  it('no precarga el hallazgo registrado: este se corrige desde la tarjeta', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+
+    // El registro aparece en la lista, pero el formulario sigue vacío
+    expect(tarjetasHallazgo().length).toBe(1);
+    expect(component.hallazgoActual).toBe('');
+    expect(component.modoEdicion).toBe(false);
+    expect(campoHallazgo().readOnly).toBe(false);
+    expect(botonGuardar().disabled).toBe(true);
+  });
+
+  it('cambia de parte del cuerpo manteniendo el formulario vacío', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 4, 'Abdomen', 'Inspección abdominal')]),
+    );
+    await remontar();
+
+    expect(component.parteSeleccionadaId).toBe(3);
+    expect(component.hallazgoActual).toBe('');
+
+    await elegirParte(1);
+
+    expect(component.parteSeleccionadaId).toBe(4);
+    expect(selectParte().selectedIndex).toBe(1);
+    expect(component.modoEdicion).toBe(false);
+    expect(component.hallazgoActual).toBe('');
+  });
+
+  it('crea el hallazgo del episodio cuando la parte no tenía ninguno', async () => {
+    await escribir('Ruidos cardiacos normales');
+
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(examenFisicoService.postExamen).toHaveBeenCalledExactlyOnceWith({
+      descripcion: 'Ruidos cardiacos normales',
+      episodioId: EPISODIO_ID,
+      parteCuerpoId: 3,
+      usuarioId: 2,
+    });
+    expect(examenFisicoService.putExamen).not.toHaveBeenCalled();
+    expect(component.modoEdicion).toBe(false);
+    expect(component.hallazgos.length).toBe(1);
+    expect(elemento<HTMLElement>('.hallazgo-card').textContent).toContain(
+      'Ruidos cardiacos normales',
+    );
+    expect(popUps.exito).toHaveBeenCalled();
+  });
+
+  it('actualiza el hallazgo cargado desde la tarjeta cuando se edita', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+    await pulsarEditarHallazgo();
+
+    expect(component.modoEdicion).toBe(true);
+    expect(component.hallazgoActual).toBe('Ruidos cardiacos normales');
+    // Guardar sigue bloqueado hasta que haya un cambio real
+    expect(botonGuardar().disabled).toBe(true);
+
+    await escribir('Dolor a la palpación');
+    expect(botonGuardar().disabled).toBe(false);
+
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(popUps.confirmarToast).toHaveBeenCalled();
+    expect(examenFisicoService.putExamen).toHaveBeenCalledExactlyOnceWith(21, {
+      descripcion: 'Dolor a la palpación',
+      episodioId: EPISODIO_ID,
+      parteCuerpoId: 3,
+      usuarioId: 2,
+    });
+    expect(examenFisicoService.postExamen).not.toHaveBeenCalled();
+    expect(component.hallazgos.length).toBe(1);
+    expect(component.hallazgoActual).toBe('');
+    expect(component.modoEdicion).toBe(false);
+    expect(popUps.exito).toHaveBeenCalled();
+  });
+
+  it('no actualiza el hallazgo si se cancela la confirmación del cambio', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+    await pulsarEditarHallazgo();
+    await escribir('Dolor a la palpación');
+    popUps.confirmarToast.mockResolvedValue(false);
+
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(popUps.confirmarToast).toHaveBeenCalled();
+    expect(examenFisicoService.putExamen).not.toHaveBeenCalled();
+    expect(component.hallazgoActual).toBe('Dolor a la palpación');
+  });
+
+  it('permite cambiar la parte del cuerpo al editar y guarda la parte elegida', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+    await pulsarEditarHallazgo();
+
+    // El selector sigue habilitado durante la edición
+    expect(selectParte().disabled).toBe(false);
+
+    await elegirParte(1);
+    expect(component.parteSeleccionadaId).toBe(4);
+    expect(botonGuardar().disabled).toBe(false);
+
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(examenFisicoService.putExamen).toHaveBeenCalledExactlyOnceWith(21, {
+      descripcion: 'Ruidos cardiacos normales',
+      episodioId: EPISODIO_ID,
+      parteCuerpoId: 4,
+      usuarioId: 2,
+    });
+  });
+
+  it('mantiene Guardar deshabilitado mientras la descripción está vacía', async () => {
+    await escribir('   ');
+
+    expect(botonGuardar().disabled).toBe(true);
+
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(examenFisicoService.postExamen).not.toHaveBeenCalled();
+    expect(examenFisicoService.putExamen).not.toHaveBeenCalled();
+  });
+
+  it('avisa cuando no se puede identificar al usuario de la sesión', async () => {
+    authService.currentUser.mockReturnValue(null);
+
+    await escribir('Ruidos cardiacos normales');
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(examenFisicoService.postExamen).not.toHaveBeenCalled();
+    expect(popUps.error).toHaveBeenCalled();
+  });
+
+  it('conserva lo escrito cuando el guardado falla', async () => {
+    examenFisicoService.postExamen.mockReturnValue(throwError(() => new Error('fallo')));
+
+    await escribir('Ruidos cardiacos normales');
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(component.hallazgoActual).toBe('Ruidos cardiacos normales');
+    expect(campoHallazgo().readOnly).toBe(false);
+    expect(popUps.errorDesdeBackend).toHaveBeenCalled();
+    expect(popUps.exito).not.toHaveBeenCalled();
+  });
+
+  it('informa de forma específica cuando el servidor no responde a tiempo', async () => {
+    examenFisicoService.postExamen.mockReturnValue(throwError(() => new TimeoutError()));
+
+    await escribir('Ruidos cardiacos normales');
+    botonGuardar().click();
+    await fixture.whenStable();
+
+    expect(popUps.error).toHaveBeenCalledWith(
+      'Error de comunicación. El servidor no respondió dentro del tiempo esperado.',
+    );
+    expect(popUps.errorDesdeBackend).not.toHaveBeenCalled();
+  });
+
+  it('cancelar descarta la captura en curso sin tocar los hallazgos registrados', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 4, 'Abdomen', 'Inspección abdominal')]),
+    );
+    await remontar();
+    await escribir('Texto sin guardar');
+
+    botonCancelar().click();
+    await fixture.whenStable();
+
+    expect(component.hallazgoActual).toBe('');
+    expect(component.hallazgos.length).toBe(1);
+  });
+
+  it('refleja el contador de caracteres y el límite de la captura', () => {
+    const texto = 'Abdomen sin dolor a la palpación.';
+    component.hallazgoActual = texto;
+    fixture.detectChanges();
+
+    expect(elemento<HTMLElement>('.contador-caracteres').textContent?.trim()).toBe(
+      `${texto.length}/2000`,
+    );
+    expect(campoHallazgo().getAttribute('maxlength')).toBe('2000');
+  });
+
+  it('bloquea las acciones mientras hay una consulta en curso', async () => {
+    component.cargando = true;
+    fixture.detectChanges();
+    // El campo deshabilitado de un control con ngModel lo aplica Angular en el siguiente microtask
+    // ([disabled] es el input isDisabled de NgModel, que delega el estado al control del formulario)
+    await fixture.whenStable();
+
+    expect(selectParte().disabled).toBe(true);
+    expect(botonCancelar().disabled).toBe(true);
+    expect(botonGuardar().disabled).toBe(true);
+    expect(elemento<HTMLElement>('.hallazgo-card--cargando')).not.toBeNull();
+  });
+
+  it('mantiene la lectura sin hallazgos cuando falla la carga inicial', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      throwError(() => new Error('fallo')),
+    );
+    await remontar();
+
+    expect(component.modoEdicion).toBe(false);
+    expect(component.hallazgos.length).toBe(0);
+    expect(popUps.errorDesdeBackend).toHaveBeenCalled();
+  });
+
+  it('muestra los hallazgos registrados del episodio en la lista', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Inspección general')]),
+    );
+    await remontar();
+
+    const registrados = elementos<HTMLElement>('.hallazgo-card:not(.hallazgo-card--cargando)');
+
+    expect(registrados.length).toBe(1);
+    expect(registrados[0].textContent).toContain('Tórax');
+    expect(registrados[0].textContent).toContain('Carlos Mendez');
+    expect(registrados[0].textContent).toContain('16-10-2026');
+    expect(registrados[0].textContent).toContain('10:15 AM');
+    expect(elementos<HTMLElement>('.hallazgo-card--cargando').length).toBe(0);
+    expect(elemento<HTMLElement>('.hallazgos-vacio')).toBeNull();
+  });
+
+  it('muestra el esqueleto de carga mientras se consultan los hallazgos', () => {
+    component.cargando = true;
+    fixture.detectChanges();
+
+    expect(elemento<HTMLElement>('.hallazgo-card--cargando')).not.toBeNull();
+    expect(elementos<HTMLElement>('.hallazgo-card:not(.hallazgo-card--cargando)').length).toBe(0);
+    expect(elemento<HTMLElement>('.hallazgos-vacio')).toBeNull();
+  });
+
+  it('muestra el estado vacío cuando el paciente aún no tiene hallazgos', () => {
+    expect(elemento<HTMLElement>('.hallazgo-card')).toBeNull();
+    expect(elemento<HTMLElement>('.hallazgos-vacio')).not.toBeNull();
+  });
+
+  // Menú de opciones de la tarjeta de hallazgo: editar y eliminar
+  it('despliega el menú de la tarjeta con las opciones Editar y Eliminar', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+
+    expect(menuHallazgo()).toBeNull();
+
+    await abrirMenuHallazgo();
+
+    expect(component.menuHallazgoAbierto).toBe(21);
+    expect(botonMenuHallazgo().getAttribute('aria-expanded')).toBe('true');
+    expect(menuHallazgo()?.textContent).toContain('Editar');
+    expect(menuHallazgo()?.textContent).toContain('Eliminar');
+    expect(botonEditarHallazgo()).not.toBeNull();
+    expect(botonEliminarHallazgo()).not.toBeNull();
+  });
+
+  it('cierra el menú al volver a pulsar el botón de tres puntos', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+
+    await abrirMenuHallazgo();
+
+    expect(component.menuHallazgoAbierto).toBeNull();
+    expect(menuHallazgo()).toBeNull();
+  });
+
+  it('cierra el menú al pulsar fuera de la tarjeta', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+    expect(menuHallazgo()).not.toBeNull();
+
+    elemento<HTMLElement>('.examen-titulo').click();
+    await fixture.whenStable();
+
+    expect(component.menuHallazgoAbierto).toBeNull();
+    expect(menuHallazgo()).toBeNull();
+  });
+
+  it('elimina el hallazgo tras confirmar en el popup', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([
+        examen(21, 3, 'Tórax', 'Ruidos cardiacos normales'),
+        examen(22, 4, 'Abdomen', 'Inspección abdominal'),
+      ]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+
+    botonEliminarHallazgo()!.click();
+    await fixture.whenStable();
+
+    expect(popUps.confirmarToast).toHaveBeenCalled();
+    expect(examenFisicoService.cambiarEstado).toHaveBeenCalledExactlyOnceWith(21);
+    expect(component.hallazgos.length).toBe(1);
+    expect(tarjetasHallazgo().length).toBe(1);
+    expect(popUps.exito).toHaveBeenCalled();
+  });
+
+  it('no elimina el hallazgo si se cancela la confirmación', async () => {
+    popUps.confirmarToast.mockResolvedValue(false);
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+
+    botonEliminarHallazgo()!.click();
+    await fixture.whenStable();
+
+    expect(examenFisicoService.cambiarEstado).not.toHaveBeenCalled();
+    expect(component.hallazgos.length).toBe(1);
+  });
+
+  // Ficha del paciente y secciones colapsadas: datos y comportamiento simulados (fase de diseño)
+  const botonPestanaPaciente = (): HTMLButtonElement =>
+    elemento<HTMLButtonElement>('.ficha-pestana');
+
+  const ficha = (): HTMLElement | null => fixture.nativeElement.querySelector('.ficha');
+
+  it('abre la ficha del paciente con la pestaña lateral', async () => {
+    expect(component.pacienteAbierto).toBe(false);
+    expect(ficha()).toBeNull();
+    expect(botonPestanaPaciente().getAttribute('aria-expanded')).toBe('false');
+
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    expect(component.pacienteAbierto).toBe(true);
+    expect(botonPestanaPaciente().getAttribute('aria-expanded')).toBe('true');
+
+    const fichaAbierta = elemento<HTMLElement>('.ficha');
+    expect(fichaAbierta.textContent).toContain('EXP-0241');
+    expect(fichaAbierta.textContent).toContain('Juan Pérez');
+    expect(fichaAbierta.textContent).toContain('Hospitalización');
+    expect(fichaAbierta.textContent).toContain('10-10-2026');
+    expect(fichaAbierta.textContent).toContain('A-105');
+    expect(fichaAbierta.textContent).toContain('Dolor abdominal y vómitos');
+    expect(fichaAbierta.textContent).toContain('Ninguna conocida');
+    // El bloque no lleva controles: se abre y se cierra con la pestaña lateral.
+    expect(elementos<HTMLElement>('.ficha button').length).toBe(0);
+  });
+
+  it('muestra la atención vigente y los últimos signos vitales', async () => {
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    const atencion = elementos<HTMLElement>('.ficha-ingreso-datos .ficha-dato');
+    expect(atencion.length).toBe(3);
+    expect(atencion[0].textContent).toContain('Tipo de atención');
+    expect(atencion[0].textContent).toContain('Hospitalización');
+    expect(atencion[1].textContent).toContain('Fecha de ingreso');
+    expect(atencion[1].textContent).toContain('10-10-2026');
+    expect(atencion[2].textContent).toContain('Cama');
+    expect(atencion[2].textContent).toContain('A-105');
+
+    const vitales = elementos<HTMLElement>('.ficha-signos .ficha-dato');
+    expect(
+      Array.from(vitales).map((signo) => signo.textContent?.replace(/\s+/g, ' ').trim()),
+    ).toEqual(['PA (mmHg)120/80', 'FC (lpm)82', 'FR (rpm)18', 'Temp. (°C)37.2', 'SpO₂ (%)97']);
+  });
+
+  it('colapsa las secciones al abrir la ficha y las expande al cerrarla', async () => {
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    const secciones = elemento<HTMLElement>('.panel-secciones');
+    expect(secciones.classList.contains('panel-secciones--rail')).toBe(true);
+    // El colapso es solo visual: las tres secciones, sus iconos y sus textos siguen en el DOM
+    expect(elementos<HTMLElement>('.panel-secciones .tarjeta').length).toBe(3);
+    expect(elementos<HTMLElement>('.panel-secciones .tarjeta_icono i').length).toBe(3);
+    expect(elementos<HTMLElement>('.panel-secciones .tarjeta_texto').length).toBe(3);
+    expect(elemento<HTMLButtonElement>('.panel-secciones .tarjeta').getAttribute('title')).toBe(
+      'Historia clínica',
+    );
+    expect(
+      elemento<HTMLButtonElement>('.panel-secciones .tarjeta').getAttribute('aria-label'),
+    ).toBe('Historia clínica');
+
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    expect(component.pacienteAbierto).toBe(false);
+    expect(ficha()).toBeNull();
+    expect(
+      elemento<HTMLElement>('.panel-secciones').classList.contains('panel-secciones--rail'),
+    ).toBe(false);
+    expect(
+      elemento<HTMLButtonElement>('.panel-secciones .tarjeta').getAttribute('title'),
+    ).toBeNull();
+    expect(
+      elemento<HTMLButtonElement>('.panel-secciones .tarjeta').getAttribute('aria-label'),
+    ).toBeNull();
+  });
+
+  it('marca el contenedor como ficha abierta para reservar el espacio del bloque de datos', async () => {
+    const rejilla = (): HTMLElement => elemento<HTMLElement>('.evaluacion');
+
+    expect(rejilla().classList.contains('evaluacion--ficha-abierta')).toBe(false);
+
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    expect(rejilla().classList.contains('evaluacion--ficha-abierta')).toBe(true);
+
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    expect(rejilla().classList.contains('evaluacion--ficha-abierta')).toBe(false);
+  });
+
+  it('delega la pestaña y el bloque de datos en el componente compartido', async () => {
+    botonPestanaPaciente().click();
+    await fixture.whenStable();
+
+    // Ninguno de los dos depende de un carril intermedio ni vive dentro de un panel: el componente
+    // compartido los dibuja pegados al borde derecho de la pantalla.
+    expect(elemento<HTMLElement>('.carril')).toBeNull();
+    expect(botonPestanaPaciente().closest('app-datos-paciente')).not.toBeNull();
+    expect(ficha()?.closest('app-datos-paciente')).not.toBeNull();
+    expect(botonPestanaPaciente().closest('.panel')).toBeNull();
+  });
+
+  it('oculta el registro de hallazgos cuando el episodio es solo lectura', async () => {
+    episodioActivo.esSoloLectura = () => true;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(elemento('.hallazgo-form')).toBeNull();
+    expect(elemento('.hallazgo-menu-trigger')).toBeNull();
+  });
+
+  it('crea la parte pendiente antes de guardar el hallazgo y usa su id', async () => {
+    examenFisicoService.postExamen.mockReturnValue(
+      of(examen(20, 9, 'Nuevo parte', 'Ruidos cardiacos normales')),
+    );
+    await escribir('Ruidos cardiacos normales');
+    const otro = await abrirOtroParte();
+    otro.nombre = 'Nuevo parte';
+    fixture.detectChanges();
+
+    expect(component.puedeGuardar).toBe(true);
+    await component.guardarHallazgo();
+
+    expect(examenFisicoService.postParteCuerpo).toHaveBeenCalledWith('Nuevo parte');
+    expect(examenFisicoService.postExamen).toHaveBeenCalledWith(
+      expect.objectContaining({ parteCuerpoId: 9 }),
+    );
+    expect(examenFisicoService.postParteCuerpo.mock.invocationCallOrder[0]).toBeLessThan(
+      examenFisicoService.postExamen.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('crea la parte pendiente antes de actualizar el hallazgo en edición', async () => {
+    examenFisicoService.getExamenesPorEpisodio.mockReturnValue(
+      of([examen(21, 3, 'Tórax', 'Ruidos cardiacos normales')]),
+    );
+    await remontar();
+    await abrirMenuHallazgo();
+    await pulsarEditarHallazgo();
+    await escribir('Dolor a la palpación');
+    const otro = await abrirOtroParte();
+    otro.nombre = 'Nuevo parte';
+    fixture.detectChanges();
+
+    await component.guardarHallazgo();
+
+    expect(examenFisicoService.postParteCuerpo).toHaveBeenCalledWith('Nuevo parte');
+    expect(examenFisicoService.putExamen).toHaveBeenCalledWith(
+      21,
+      expect.objectContaining({ parteCuerpoId: 9 }),
+    );
+    expect(examenFisicoService.postParteCuerpo.mock.invocationCallOrder[0]).toBeLessThan(
+      examenFisicoService.putExamen.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('no guarda el hallazgo si falla la creación de la parte pendiente', async () => {
+    examenFisicoService.postParteCuerpo.mockReturnValue(throwError(() => new Error('fallo')));
+    await escribir('Ruidos cardiacos normales');
+    const otro = await abrirOtroParte();
+    otro.nombre = 'Nuevo parte';
+    fixture.detectChanges();
+
+    await component.guardarHallazgo();
+
+    expect(examenFisicoService.postExamen).not.toHaveBeenCalled();
+    expect(examenFisicoService.putExamen).not.toHaveBeenCalled();
+    expect(popUps.errorDesdeBackend).toHaveBeenCalled();
+  });
+
+  it('no guarda si la parte pendiente está vacía y avisa con el formulario incompleto', async () => {
+    await escribir('Ruidos cardiacos normales');
+    await abrirOtroParte();
+
+    expect(component.puedeGuardar).toBe(true);
+    await component.guardarHallazgo();
+
+    expect(examenFisicoService.postParteCuerpo).not.toHaveBeenCalled();
+    expect(examenFisicoService.postExamen).not.toHaveBeenCalled();
+    expect(popUps.formIncompleto).toHaveBeenCalledWith(
+      'Completa el valor de «Parte del cuerpo» o cancélalo antes de guardar.',
+    );
+  });
+});
